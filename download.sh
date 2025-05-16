@@ -13,7 +13,9 @@ mkdir -p "$DOWNLOAD_DIR"
 # Select the Linux distribution to download
 # Use methods from ./include.sh to select the distro.
 selected_distro=$(select_distro ${DISTROS[@]})
-# select_distro ${DISTROS[@]}
+
+# TODO: allow selecting multiple distros
+selected_distros=(${select_distros ${DISTROS[@]})
 
 # echo "Selected distro: $selected_distro"
 #exit 1
@@ -26,8 +28,8 @@ download_file "${DISTROS[$selected_distro]}"
 
 # Check if all downloads were successful
 if [ $? -eq 0 ]; then
-    echo "All ISO images downloaded successfully."
+    print $GREEN "Download completed!" "All ISO images downloaded successfully."
 else
-    echo "Some downloads failed. Please check the logs."
+    print $RED "Error:" "Some downloads failed. Please check the logs."
 fi
 # End of script

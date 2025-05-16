@@ -206,6 +206,31 @@ create_directory() {
     fi
 }
 
+# Function to select multiple distros
+select_multiple_distros() {
+    local selected_distros
+    local options=()
+    
+    # Using a parameter for the function.
+    # for d in "${!distros[@]}"; do
+    #     options+=("$d" "${distros[$d]}")
+    # done
+
+    # Without parameters for the function.
+    for d in "${!DISTROS[@]}"; do
+        options+=("$d" "${DISTROS[$d]}")
+    done
+
+    selected_distros=$(dialog --stdout --title "Select Linux Distro" --checklist "Choose Linux distributions to download:" $DIALOG_HEIGHT $DIALOG_WIDTH 0 "${options[@]}")
+
+    if [ $? -ne 0 ]; then
+        print $RED "No distro selected. Exiting..."
+        exit 1
+    fi
+
+    echo "$selected_distros"
+}
+
 # Select the Distro to download. Use Dialog to select the distro.
 select_distro() {
     # List passed to the function.
@@ -266,22 +291,45 @@ download_file() {
     fi
 }
 
-# # Function to download an ISO image
-# download_iso() {
-#     local distro_name="$1"
-#     local url="$2"
-#     # local iso_path="$3"
-
-#     local iso_name="${url##*/}"
+# Function to download an ISO image
+download_iso() {
+    local distro_name="$1"
     
-#     print $YELLOW "Downloading $distro_name..."
-#     if curl -L -o "$iso_path" "$url"; then
-#         print $GREEN "$distro_name downloaded successfully: $iso_path"
-#     else
-#         print $RED "Failed to download $distro_name." "Please check the URL or your internet connection."
-#         rm -f "$iso_path"  # Remove the incomplete download
-#     fi
-# }
+    # Get the URL from the DISTROS array
+    local url="${DISTROS[$distro_name]}"
+    if [ -z "$url" ]; then
+        print $RED "Error: No URL found for $distro_name." "Please check the DISTROS array."
+        return 1
+    fi
+    # Get the output file name from the URL
+    local output=$(basename "$url")
+    # If $output doesnot have the extension (any extension), we will try to get whatever would be in the format: http(s)://...../file.ext/anything -> file.ext in this case
+
+    if [[ "$output" != *.* ]]; then
+        output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
+    fi
+    # Check if the file already exists
+    if file_exists "$output"; then
+        print $YELLOW "File $output already exists. Skipping download."
+        return 0
+    fi
+
+    # Download thefile
+    download_file "$url" "$output"
+    if [ $? -ne 0 ]; then
+        print $RED "Error: Failed to download $distro_name." "Please check the URL or your internet connection."
+        return 1
+    fi
+    print $GREEN "Download completed: $output"
+    # Check if the file is a valid ISO image
+    if is_valid_iso "$output"; then
+        print $GREEN "$output is a valid ISO image."
+        return 0
+    else
+        print $RED "$output is not a valid ISO image." "Please check the file."
+        return 1
+    fi
+}
 
 # Function to check if a file is a valid ISO image
 is_valid_iso() {
