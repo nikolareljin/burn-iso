@@ -1,10 +1,20 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-source ./include.sh
+# Load shared helpers (script-helpers as sibling or configured via SCRIPT_HELPERS_DIR)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$SCRIPT_DIR/../script-helpers}"
+# shellcheck source=/dev/null
+source "$SCRIPT_HELPERS_DIR/helpers.sh"
+shlib_import logging dialog file
 
-DIALOG_DIRECTORY=$HOME/Downloads
+# Project data (distros)
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/distros.sh"
 
-# Check if dialog is installed
+DIALOG_DIRECTORY=${DIALOG_DIRECTORY:-$HOME/Downloads}
+
+# Ensure dialog is installed and initialize dialog dimensions
 check_if_dialog_installed
 
 # Select ISO using dialog
@@ -117,4 +127,3 @@ else
 fi
 
 # End of script
-

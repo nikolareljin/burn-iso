@@ -201,8 +201,10 @@ create_directory() {
     if ! directory_exists "$1"; then
         mkdir -p "$1"
         echo "Directory $1 created."
+        return 0
     else
         echo "Directory $1 already exists."
+        return 1
     fi
 }
 
@@ -229,6 +231,7 @@ select_multiple_distros() {
     fi
 
     echo "$selected_distros"
+    return 0
 }
 
 # Select the Distro to download. Use Dialog to select the distro.
@@ -261,6 +264,7 @@ select_distro() {
     fi
 
     echo "$selected_distro"
+    return 0
 }
 
 # Function to download a file
@@ -289,6 +293,14 @@ download_file() {
         print $RED "Error: Neither curl nor wget is installed." "Please install one of them to download files."
         return 1
     fi
+
+    if [ $? -ne 0 ]; then
+        print $RED "Error: Failed to download $url." "Please check the URL or your internet connection."
+        return 1
+    else
+        print $GREEN "Download completed: $output"
+        return 0
+    fi
 }
 
 # Function to download an ISO image
@@ -311,7 +323,6 @@ download_iso() {
     # Check if the file already exists
     if file_exists "$output"; then
         print $YELLOW "File $output already exists. Skipping download."
-        return 0
     fi
 
     # Download thefile

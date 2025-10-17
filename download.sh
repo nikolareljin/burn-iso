@@ -1,6 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-source ./include.sh
+# Load shared helpers (script-helpers as sibling or configured via SCRIPT_HELPERS_DIR)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$SCRIPT_DIR/../script-helpers}"
+# shellcheck source=/dev/null
+source "$SCRIPT_HELPERS_DIR/helpers.sh"
+shlib_import logging dialog file
+
+# Project data (distros)
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/distros.sh"
 
 # Download ISO images for the main Linux distributions
 # and save them to the specified directory.
