@@ -1,129 +1,215 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Load shared helpers (script-helpers as sibling or configured via SCRIPT_HELPERS_DIR)
+# Burn a selected ISO to a selected drive, using config.json
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$SCRIPT_DIR/../script-helpers}"
+SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$SCRIPT_DIR/scripts}"
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
-shlib_import logging dialog file
+shlib_import logging dialog file os deps
 
-# Project data (distros)
-# shellcheck source=/dev/null
-source "$SCRIPT_DIR/distros.sh"
+CONFIG_FILE="${CONFIG_FILE:-$SCRIPT_DIR/config.json}"
 
-DIALOG_DIRECTORY=${DIALOG_DIRECTORY:-$HOME/Downloads}
+DOWNLOAD_DIR=""
+DEVICE_FILTER="usb"
+SELECTED_IMAGE=""
+SELECTED_DEVICE=""
 
-# Ensure dialog is installed and initialize dialog dimensions
-check_if_dialog_installed
-
-# Select ISO using dialog
-# Use dialog cli tool to select the ISO file from the file system.
-# The selected file is stored in the variable $ISO_FILE.
-# Start with Downloads directory.
-# Make sure to pass the return value to ISO_FILE.
-# Filter by .iso files only.
-# ISO_FILE=$(dialog --stdout --title "Select ISO file (TAB = switch, SPACE = select)" --fselect "$DIALOG_DIRECTORY/" ${DIALOG_HEIGHT} ${DIALOG_WIDTH})
-ISO_FILE=$(find "$DIALOG_DIRECTORY" -type f -name "*.iso" | dialog --stdout --title "Select ISO file (TAB = switch, SPACE = select)" --menu "Select an ISO file:" ${DIALOG_HEIGHT} ${DIALOG_WIDTH} 0 $(awk '{print $0, NR}' | tr '\n' ' '))
-
-# Check if the user has selected a file or canceled the dialog
-# If the user has canceled the dialog, exit the script.
-if [ $? -ne 0 ]; then
-    # print_red "No file selected. Exiting..."
-    dialog --backtitle "Error" --title "No File Selected" --msgbox "No ISO files selected. Please make sure you have selected the correct ISO file. Exiting..." $DIALOG_HEIGHT $DIALOG_WIDTH
-    clear
+require_tool() {
+  local t="$1"
+  if ! command -v "$t" >/dev/null 2>&1; then
+    print_error "$t is required but not installed. Run ./setup.sh."
     exit 1
-fi
+  fi
+}
 
-# Check if the selected file is an ISO file
-# If the selected file is not an ISO file, exit the script.
-if [ ${ISO_FILE: -4} != ".iso" ]; then
-    # print_red "The selected file is not an ISO file. Exiting..."
-    dialog --backtitle "Error" --title "No File Selected" --msgbox "No ISO files selected. Please make sure you have selected the correct ISO file. Exiting..." $DIALOG_HEIGHT $DIALOG_WIDTH
+load_config() {
+  if [[ ! -f "$CONFIG_FILE" ]]; then
+    print_error "Config file not found: $CONFIG_FILE"
     exit 1
-fi
+  fi
+  require_tool jq
+  DOWNLOAD_DIR=$(jq -r '.download_dir // empty' "$CONFIG_FILE")
+  [[ -z "$DOWNLOAD_DIR" || "$DOWNLOAD_DIR" == "null" ]] && DOWNLOAD_DIR="$HOME/Downloads/iso_images"
+  [[ "$DOWNLOAD_DIR" == ~* ]] && DOWNLOAD_DIR="${DOWNLOAD_DIR/#~/$HOME}"
+  DEVICE_FILTER=$(jq -r '.block_device_filter // "usb"' "$CONFIG_FILE")
+}
 
-# List all the block devices
-# Use lsblk to list all the block devices on the system.
-# The block devices are stored in the variable $BLOCK_DEVICES.
-# SOURCE_DEVICES="disk|usb|sd"
-SOURCE_DEVICES="usb"
-BLOCK_DEVICES=$(lsblk -d -o NAME,SIZE,TRAN | grep -E ${SOURCE_DEVICES} | awk '{print $1,$2,$3}')
-# echo "block devices: $BLOCK_DEVICES"
-# exit 2
-
-# Check if there are any block devices on the system
-# If there are no block devices on the system, exit the script.
-if [ -z "$BLOCK_DEVICES" ]; then
-    dialog --backtitle "Error" --title "No Block Devices Found" --msgbox "No block devices found on the system. Exiting..." $DIALOG_HEIGHT $DIALOG_WIDTH
+ensure_dialog() {
+  check_if_dialog_installed || {
+    print_error "Dialog not installed. Run ./setup.sh"
     exit 1
-fi
+  }
+}
 
-# Select block device using dialog
-# Use dialog cli tool to select the block device from the list of block devices.
-# The selected block device is stored in the variable $BLOCK_DEVICE.
-BLOCK_DEVICE=$(echo "$BLOCK_DEVICES" | awk '{print $1, $1}' | tr '\n' ' ' | xargs dialog --stdout --title "Select block device \
-Press SPACE to select the device" --menu "Select the block device to burn the ISO file to:" $DIALOG_HEIGHT $DIALOG_WIDTH 17)
+# Install required tools if missing using script-helpers
+ensure_deps() {
+  local pkgs=()
+  command -v dialog >/dev/null 2>&1 || pkgs+=(dialog)
+  command -v jq >/dev/null 2>&1 || pkgs+=(jq)
+  if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
+    pkgs+=(curl wget)
+  fi
+  command -v lsblk >/dev/null 2>&1 || pkgs+=(util-linux)
+  command -v dd >/dev/null 2>&1 || pkgs+=(coreutils)
+  if [[ ${#pkgs[@]} -gt 0 ]]; then
+    print_info "Installing missing dependencies: ${pkgs[*]}"
+    install_dependencies "${pkgs[@]}"
+  fi
+}
 
+choose_image() {
+  dialog_init
+  create_directory "$DOWNLOAD_DIR" >/dev/null || true
+  mapfile -t files < <(find "$DOWNLOAD_DIR" -maxdepth 1 -type f -iname "*.iso" 2>/dev/null | sort)
+  if [[ ${#files[@]} -eq 0 ]]; then
+    local msg="No ISO files found in $DOWNLOAD_DIR.\nRun ./download.sh to fetch images, or browse to a local file."
+    dialog --title "No ISOs" --msgbox "$msg" 10 70
+    select_local_image || return 1
+    return 0
+  fi
 
-# Check if the user has selected a block device or canceled the dialog
-# If the user has canceled the dialog, exit the script.
-if [ $? -ne 0 ]; then
-    # print_red "No block device selected. Exiting..."
-    dialog --backtitle "Error" --title "No Block Devices Selected" --msgbox "No block devices were selected. Please select the destination block device you would like to write ISO file to. Exiting..." $DIALOG_HEIGHT $DIALOG_WIDTH
-    exit 1
-fi
+  # Build menu with numeric tags, showing basenames
+  local items=()
+  local i=0
+  for p in "${files[@]}"; do
+    i=$((i+1))
+    items+=("$i" "$(basename "$p")")
+  done
+  items+=("browse" "Browse for another .iso")
 
-## Check if the selected block device is a disk
-## If the selected block device is not a disk, exit the script.
-#if [ $(lsblk -d -o NAME,TRAN | grep $BLOCK_DEVICE | awk '{print $2}') != "disk" ]; then
-#    print_red "The selected block device is not a disk. Exiting..."
-#    exit 1
-#fi
+  local chosen
+  chosen=$(dialog --stdout --title "Select ISO" --menu "Choose an image to burn" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 0 "${items[@]}") || return 1
+  if [[ "$chosen" == "browse" ]]; then
+    select_local_image || return 1
+    return 0
+  fi
+  local idx=$((chosen-1))
+  SELECTED_IMAGE="${files[$idx]}"
+}
 
-## Check if the selected block device is a USB disk
-## If the selected block device is not a USB disk, exit the script.
-#if [ $(lsblk -d -o NAME,TRAN | grep $BLOCK_DEVICE | awk '{print $2}') != "usb" ]; then
-#    print_red "The selected block device is not a USB disk. Exiting..."
-#    exit 1
-#fi
+select_local_image() {
+  dialog_init
+  local start_dir="${DOWNLOAD_DIR:-$HOME}"
+  local iso
+  iso=$(dialog --stdout --title "Select ISO" --fselect "$start_dir/" "$DIALOG_HEIGHT" "$DIALOG_WIDTH") || return 1
+  [[ -z "$iso" ]] && return 1
+  if [[ "${iso,,}" != *.iso ]]; then
+    dialog --title "Invalid file" --msgbox "Selected file is not an .iso" 8 50
+    return 1
+  fi
+  SELECTED_IMAGE="$iso"
+}
 
-## Check if the selected block device is a SD disk
-## If the selected block device is not a SD disk, exit the script.
-#if [ $(lsblk -d -o NAME,TRAN | grep $BLOCK_DEVICE | awk '{print $2}') != "sd" ]; then
-#    print_red "The selected block device is not a SD disk. Exiting..."
-#    exit 1
-#fi
+select_drive() {
+  dialog_init
+  local rows raw dev type size model tran rm ro
+  raw=$(lsblk -dn -o NAME,TYPE,SIZE,MODEL,TRAN,RM,RO -P)
+  rows=()
+  while IFS= read -r line; do
+    # shellcheck disable=SC2001
+    dev=$(sed -n 's/.*NAME="\([^"]*\)".*/\1/p' <<<"$line")
+    type=$(sed -n 's/.*TYPE="\([^"]*\)".*/\1/p' <<<"$line")
+    size=$(sed -n 's/.*SIZE="\([^"]*\)".*/\1/p' <<<"$line")
+    model=$(sed -n 's/.*MODEL="\([^"]*\)".*/\1/p' <<<"$line")
+    tran=$(sed -n 's/.*TRAN="\([^"]*\)".*/\1/p' <<<"$line")
+    rm=$(sed -n 's/.*RM="\([^"]*\)".*/\1/p' <<<"$line")
+    ro=$(sed -n 's/.*RO="\([^"]*\)".*/\1/p' <<<"$line")
 
-# Check if the selected block device is mounted
-# If the selected block device is mounted, exit the script.
-if [ $(lsblk -o MOUNTPOINT | grep $BLOCK_DEVICE) ]; then
-    print_red "The selected block device is mounted. Unmount the block device and try again. Exiting..."
-    exit 1
-fi
+    [[ "$type" != "disk" ]] && continue
+    if [[ "$DEVICE_FILTER" == "usb" ]]; then
+      [[ "$tran" != "usb" && "$rm" != "1" ]] && continue
+    fi
 
-echo "Selected block device: $BLOCK_DEVICE"
-exit 1
+    rows+=("$dev" "$size ${model:-} [${tran:-n/a}] RO:${ro}")
+  done <<<"$raw"
 
-# Check if the selected block device is busy
-# If the selected block device is busy, exit the script.
-if [ $(lsof $BLOCK_DEVICE) ]; then
-    print_red "The selected block device is busy. Close all the processes using the block device and try again. Exiting..."
-    exit 1
-fi
+  if [[ ${#rows[@]} -eq 0 ]]; then
+    dialog --title "No drives" --msgbox "No suitable drives found (filter: $DEVICE_FILTER)." 8 60
+    return 1
+  fi
 
-# Start the burning process
-(
-    dd bs=4M if=$ISO_FILE of=$BLOCK_DEVICE conv=fsync oflag=direct status=progress
-) 2>&1 | stdbuf -o0 awk '/[0-9]+ bytes/ {print $0}' | dialog --progressbox "Burning ISO to $BLOCK_DEVICE..." $DIALOG_HEIGHT $DIALOG_WIDTH
-# print_yellow "  dd bs=4M if=$ISO_FILE of=$BLOCK_DEVICE conv=fsync oflag=direct status=progress"
+  local chosen
+  chosen=$(dialog --stdout --title "Select Drive" --menu "Choose destination drive (data will be destroyed)" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 0 "${rows[@]}") || return 1
 
-# Check if the burning process was successful
-# If the burning process was successful, print a success message.
-if [ $? -eq 0 ]; then
-    print_green "ISO file burned successfully to $BLOCK_DEVICE."
-else
-    print_red "Failed to burn ISO file to $BLOCK_DEVICE."
-fi
+  # Verify not mounted
+  if lsblk "/dev/$chosen" -o MOUNTPOINT -n | grep -q "/"; then
+    dialog --title "Drive mounted" --msgbox \
+      "Selected drive appears to have mounted partitions.\nPlease unmount all partitions and try again." 9 70
+    return 1
+  fi
+  SELECTED_DEVICE="$chosen"
+}
 
-# End of script
+flash_confirm() {
+  dialog --stdout --title "Confirm Burn" --yesno \
+    "Image:\n  $SELECTED_IMAGE\n\nDrive:\n  /dev/$SELECTED_DEVICE\n\nAll data on the drive will be destroyed. Proceed?" 12 70
+}
+
+flash_image() {
+  dialog_init
+  if [[ -z "${SELECTED_IMAGE:-}" || -z "${SELECTED_DEVICE:-}" ]]; then
+    dialog --title "Missing selection" --msgbox "Please select both an image and a drive first." 8 60
+    return 1
+  fi
+  if ! [[ -f "$SELECTED_IMAGE" ]]; then
+    dialog --title "Image missing" --msgbox "Selected image not found: $SELECTED_IMAGE" 8 70
+    return 1
+  fi
+
+  flash_confirm || return 1
+
+  local dev="/dev/$SELECTED_DEVICE"
+
+  # Size of ISO (Linux/macOS)
+  local total
+  if command -v stat >/dev/null 2>&1; then
+    if stat -c %s "$SELECTED_IMAGE" >/dev/null 2>&1; then
+      total=$(stat -c %s "$SELECTED_IMAGE")
+    else
+      total=$(stat -f%z "$SELECTED_IMAGE")
+    fi
+  else
+    total=0
+  fi
+
+  local dd_args=(dd if="$SELECTED_IMAGE" of="$dev" bs=4M conv=fsync status=progress)
+  local prefix=()
+  if command -v sudo >/dev/null 2>&1; then prefix=(sudo); fi
+
+  (
+    set +e
+    "${prefix[@]}" "${dd_args[@]}" 2>&1 |
+      awk -v total="$total" '
+        /^[0-9]+ bytes/ {
+          cur=$1; pct=(total>0)?int(cur*100/total):0; if (pct>100)pct=100;
+          print "XXX"; print pct; printf("Writing... %s bytes\n", cur); print "XXX"; fflush();
+        }
+      END { print "XXX"; print 100; print "Finalizing..."; print "XXX"; fflush(); }'
+    status=$?
+    echo "$status" >"$SCRIPT_DIR/.burn_status.tmp"
+  ) | dialog --title "Burning to $dev" --gauge "Starting..." 12 "$DIALOG_WIDTH" 0
+
+  local status; status=$(cat "$SCRIPT_DIR/.burn_status.tmp" 2>/dev/null || echo 1)
+  rm -f "$SCRIPT_DIR/.burn_status.tmp"
+  sync || true
+
+  if [[ "$status" -eq 0 ]]; then
+    dialog --title "Success" --msgbox "Burn completed successfully." 7 40
+  else
+    dialog --title "Error" --msgbox "Burn failed. Check permissions and device." 8 60
+    return 1
+  fi
+}
+
+main() {
+  ensure_deps
+  ensure_dialog
+  load_config
+  choose_image || exit 1
+  select_drive || exit 1
+  flash_image
+}
+
+main "$@"

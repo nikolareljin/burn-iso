@@ -1,0 +1,52 @@
+{
+  "download_dir": "~/Downloads/iso_images",
+  "block_device_filter": "usb",
+  "distros": [
+    {
+      "id": "Ubuntu_24_04_amd64",
+      "label": "Ubuntu 24.04 LTS (amd64)",
+      "url": "https://releases.ubuntu.com/24.04/ubuntu-24.04.1-desktop-amd64.iso"
+    },
+    {
+      "id": "Fedora_40_Workstation_amd64",
+      "label": "Fedora 40 Workstation (x86_64)",
+      "url": "https://download.fedoraproject.org/pub/fedora/linux/releases/40/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-40-1.14.iso"
+    },
+    {
+      "id": "Debian_12_amd64",
+      "label": "Debian 12 (Bookworm) netinst (amd64)",
+      "url": "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-12.6.0-amd64-netinst.iso"
+    },
+    {
+      "id": "Arch_Linux_latest",
+      "label": "Arch Linux (latest)",
+      "url": "https://mirror.rackspace.com/archlinux/iso/latest/archlinux-x86_64.iso"
+    },
+    {
+      "id": "Linux_Mint_22_amd64",
+      "label": "Linux Mint 22 Cinnamon (amd64)",
+      "url": "https://mirrors.edge.kernel.org/linuxmint/stable/22/linuxmint-22-cinnamon-64bit.iso"
+    },
+    {
+      "id": "Manjaro_24_amd64",
+      "label": "Manjaro 24 XFCE (x86_64)",
+      "url": "https://download.manjaro.org/xfce/24.0.1/manjaro-xfce-24.0.1-240630-linux69.iso"
+    },
+    {
+      "id": "Pop_OS_22_04_amd64",
+      "label": "Pop!_OS 22.04 LTS (amd64)",
+      "url": "https://iso.pop-os.org/22.04/amd64/intel/24/pop-os_22.04_amd64_intel_24.iso"
+    },
+    {
+      "id": "elementary_7_amd64",
+      "label": "elementary OS 7 (Horus) (amd64)",
+      "url": "https://sgp1.dl.elementary.io/download/MTcyNzY4OTQyMQ==/elementaryos-7.1-stable.20240916rc.iso"
+    },
+    {
+      "id": "SystemRescue_amd64",
+      "label": "SystemRescue 10.01 (amd64)",
+      "url": "https://www.system-rescue.org/download/systemrescue-10.01-amd64.iso"
+    }
+  ]
+}
+
