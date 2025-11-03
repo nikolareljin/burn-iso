@@ -4,7 +4,21 @@ Simple shell scripts for downloading popular Linux ISOs and burning them to a US
 
 Repository
 
-- GitHub: git@github.com:nikolareljin/burn-iso.git
+- GitHub (SSH): git@github.com:nikolareljin/burn-iso.git
+- GitHub (HTTPS): https://github.com/nikolareljin/burn-iso.git
+
+Important: Clone With Submodules
+
+- This repo uses a Git submodule in `./scripts` for shared helpers. Clone with `--recurse-submodules`.
+- Fresh clone (SSH):
+  - `git clone --recurse-submodules git@github.com:nikolareljin/burn-iso.git`
+  - `cd burn-iso`
+- Fresh clone (HTTPS):
+  - `git clone --recurse-submodules https://github.com/nikolareljin/burn-iso.git`
+  - `cd burn-iso`
+- If you already cloned without submodules:
+  - `git submodule sync --recursive`
+  - `git submodule update --init --recursive`
 
 Recent Changes
 
@@ -32,10 +46,12 @@ Submodule Layout
 
 Clone With Submodules
 
-- Fresh clone (recommended):
-  - `git clone --recurse-submodules <this-repo-url>`
+- Fresh clone (SSH):
+  - `git clone --recurse-submodules git@github.com:nikolareljin/burn-iso.git`
   - `cd burn-iso`
-
+- Fresh clone (HTTPS):
+  - `git clone --recurse-submodules https://github.com/nikolareljin/burn-iso.git`
+  - `cd burn-iso`
 - If already cloned without submodules:
   - `git submodule sync --recursive`
   - `git submodule update --init --recursive`
