@@ -393,4 +393,3 @@ verify_checksum() {
         return 1
     fi
 }
-

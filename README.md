@@ -2,9 +2,25 @@ Burn ISO Utilities
 
 Simple shell scripts for downloading popular Linux ISOs and burning them to a USB device using `dialog` for UI prompts.
 
+Repository
+
+- GitHub: git@github.com:nikolareljin/burn-iso.git
+
+Recent Changes
+
+- Root commands are short symlinks (`./etcher`, `./download`, `./burn`, `./setup`).
+- Actual app scripts were moved from `./scripts/*.sh` to `./inc/*.sh`.
+- Scripts resolve the repo root at runtime so they work via symlinks or direct `bash ./inc/<name>.sh`.
+
+Symlinked entrypoints
+
+- The root now contains simple entrypoints without the `.sh` suffix: `./etcher`, `./download`, `./burn`, `./setup`.
+- These are symlinks pointing to the actual scripts in `./inc/*.sh`.
+- This keeps the root clean and makes commands shorter to run.
+
 Etcher for the CLI
 
-- Use `etcher.sh` for a simple, Etcher-like flow in your terminal:
+- Use `./etcher` for a simple, Etcher-like flow in your terminal:
   - Select Image (download from curated list or pick a local .iso)
   - Select Drive (USB by default)
   - Flash (with progress gauge)
@@ -35,18 +51,75 @@ Note: SSH access is required for the submodule URL `git@github.com:nikolareljin/
 Install Dependencies
 
 - Use the helper-powered setup script to install required tools (`dialog`, `curl`, `jq`, `wget`, `util-linux`, `coreutils`):
-  - `bash ./setup.sh`
-  - Optionally, pass additional packages: `bash ./setup.sh <pkg1> <pkg2> ...`
+  - `./setup`
+  - Optionally, pass additional packages: `./setup <pkg1> <pkg2> ...`
   - The scripts also attempt to auto-install missing dependencies at runtime using the script-helpers `deps` module.
 
 Usage
 
 - Etcher-like TUI:
-  - `bash ./etcher.sh`
+  - `./etcher`
 
 - Config-powered utilities:
-  - Download from curated list (config.json): `bash ./download.sh`
-  - Burn an ISO from your `download_dir` (or browse): `bash ./burn.sh`
+  - Download from curated list (config.json): `./download`
+  - Burn an ISO from your `download_dir` (or browse): `./burn`
+
+Notes on layout
+
+- App scripts live in `./inc/*.sh`; root-level commands are symlinks.
+- The `scripts/` directory is a submodule providing helper libraries; app scripts use it via `SCRIPT_HELPERS_DIR`.
+- Advanced users can invoke the underlying scripts with `bash ./inc/<name>.sh`, but the recommended way is via the root symlinks shown above.
+
+Screenshots (CLI)
+
+Layout and symlinks
+
+```
+$ ls -l
+lrwxrwxrwx 1 user user   13 Nov  2  etcher   -> inc/etcher.sh
+lrwxrwxrwx 1 user user   15 Nov  2  download -> inc/download.sh
+lrwxrwxrwx 1 user user   11 Nov  2  burn     -> inc/burn.sh
+lrwxrwxrwx 1 user user   12 Nov  2  setup    -> inc/setup.sh
+drwxr-xr-x 2 user user 4096 Nov  2  inc/
+drwxr-xr-x 5 user user 4096 Nov  2  scripts/   # helper submodule
+```
+
+Etcher-like flow
+
+```
+$ ./etcher
+Image: <not selected>
+Drive: <not selected>
+
+Choose an action:
+  image  Select Image
+  drive  Select Drive
+  flash  Flash!
+  quit   Quit
+```
+
+Selecting an image from config
+
+```
+$ ./download
+[dialog] Select one or more distros to download
+  [ ] Ubuntu_24_04_amd64   Ubuntu 24.04 LTS (amd64)
+  [x] SystemRescue_amd64   SystemRescue 10.01 (amd64)
+  [ ] Fedora_amd64         Fedora Workstation 42 (x86_64)
+...
+```
+
+Flashing progress
+
+```
+$ ./burn
+Confirm Burn
+  Image: /home/user/Downloads/iso_images/systemrescue-10.01-amd64.iso
+  Drive: /dev/sdb
+
+Flashing to /dev/sdb
+[ 42% ] Writing... 420478976 bytes
+```
 
 Environment Overrides
 

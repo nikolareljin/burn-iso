@@ -3,12 +3,20 @@ set -euo pipefail
 
 # Load shared helpers from submodule in ./scripts (override with SCRIPT_HELPERS_DIR)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$SCRIPT_DIR/scripts}"
+# Resolve repo root so script works whether run via root-level symlink or directly
+if [[ -d "$SCRIPT_DIR/scripts" && -f "$SCRIPT_DIR/config.json" ]]; then
+  REPO_ROOT="$SCRIPT_DIR"
+elif [[ -f "$SCRIPT_DIR/../config.json" && -d "$SCRIPT_DIR/../scripts" ]]; then
+  REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+else
+  REPO_ROOT="$SCRIPT_DIR"
+fi
+SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts}"
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging dialog file os deps
 
-CONFIG_FILE="${CONFIG_FILE:-$SCRIPT_DIR/config.json}"
+CONFIG_FILE="${CONFIG_FILE:-$REPO_ROOT/config.json}"
 
 require_tool() {
   local t="$1"
