@@ -57,43 +57,97 @@ ensure_deps() {
   fi
 }
 
+# Download with a dialog gauge progress bar
+download_with_progress() {
+  local url="$1"; shift
+  local output="$1"; shift
+  local label="${1:-$output}"
+  local total_bytes=0
+  local cl
+  cl=$(curl -sI -L "$url" | awk 'tolower($1)=="content-length:"{print $2}' | tail -1 | tr -d '\r') || true
+  [[ -n "$cl" && "$cl" =~ ^[0-9]+$ ]] && total_bytes=$cl || total_bytes=0
+
+  (
+    set +e
+    if command -v curl >/dev/null 2>&1; then
+      curl -L -o "$output" "$url" &
+      pid=$!
+    else
+      wget -O "$output" "$url" &
+      pid=$!
+    fi
+    while kill -0 "$pid" 2>/dev/null; do
+      local size=0 pct=0
+      size=$(stat -c %s "$output" 2>/dev/null || echo 0)
+      if (( total_bytes > 0 )); then
+        pct=$(( size * 100 / total_bytes ))
+        (( pct > 99 )) && pct=99
+      else
+        pct=0
+      fi
+      echo "XXX"; echo "$pct"; printf "Downloading: %s\n(%s/%s bytes)\n" "$label" "$size" "${total_bytes:-unknown}"; echo "XXX"
+      sleep 0.3
+    done
+    wait "$pid"; status=$?
+    echo "$status" >"$REPO_ROOT/.dl_status.tmp"
+    echo "XXX"; echo 100; echo "Finalizing..."; echo "XXX"
+  ) | dialog --title "Downloading" --gauge "Starting..." 10 "$DIALOG_WIDTH" 0
+
+  local status; status=$(cat "$REPO_ROOT/.dl_status.tmp" 2>/dev/null || echo 1)
+  rm -f "$REPO_ROOT/.dl_status.tmp"
+  return "$status"
+}
+
 ensure_deps
 check_if_dialog_installed
 dialog_init
 load_config
 create_directory "$DOWNLOAD_DIR" >/dev/null || true
 
-# Build dialog checklist from config.json
-mapfile -t options < <(jq -r '.distros[] | "\(.id)\t\(.label)"' "$CONFIG_FILE")
-if [[ ${#options[@]} -eq 0 ]]; then
+##############################################################
+# Build selection using script-helpers default dialog helpers #
+##############################################################
+# Prepare associative arrays expected by script-helpers select_* helpers.
+# DISTROS is used for display (value shown under each ID), so we map to the
+# human-friendly label from config. We also keep a URLS map for later use.
+declare -A DISTROS
+declare -A URLS
+
+while IFS=$'\t' read -r id label url; do
+  [[ -z "$id" || -z "$label" || -z "$url" ]] && continue
+  DISTROS["$id"]="$label"
+  URLS["$id"]="$url"
+done < <(jq -r '.distros[] | "\(.id)\t\(.label)\t\(.url)"' "$CONFIG_FILE")
+
+if [[ ${#DISTROS[@]} -eq 0 ]]; then
   print_error "No distros defined in config.json"
   exit 1
 fi
 
-items=()
-for line in "${options[@]}"; do
-  id="${line%%$'\t'*}"
-  label="${line#*$'\t'}"
-  items+=("$id" "$label" off)
-done
-
-selected=$(dialog --stdout --title "Download ISOs" --checklist "Select one or more distros to download" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 0 "${items[@]}") || {
+# Use the default multi-select dialog from script-helpers
+selected=$(select_multiple_distros) || {
   print_warning "No selection made. Exiting."
   exit 1
 }
 
-# dialog returns space-separated quoted ids, e.g., "Ubuntu_24" "Fedora_40"
+# The helper returns a space-separated list of quoted IDs; strip quotes.
 selected=$(sed 's/\"//g' <<<"$selected")
 
 pushd "$DOWNLOAD_DIR" >/dev/null
 errors=0
 for id in $selected; do
-  url=$(jq -r --arg id "$id" '.distros[] | select(.id==$id) | .url' "$CONFIG_FILE")
+  url="${URLS[$id]:-}"
+  label="${DISTROS[$id]:-}" # human-friendly name for the gauge
   if [[ -z "$url" || "$url" == "null" ]]; then
     print_error "No URL for $id in config.json"; errors=$((errors+1)); continue
   fi
-  print_info "Downloading $id -> $url"
-  if ! download_file "$url"; then
+  output=$(basename "$url")
+  if [[ "$output" != *.* ]]; then
+    output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
+  fi
+  print_info "Downloading $label -> $output"
+  # Use the label for the gauge text to show a friendly name
+  if ! download_with_progress "$url" "$output" "$label"; then
     print_error "Failed to download $id"
     errors=$((errors+1))
   fi

@@ -2,51 +2,32 @@
   "download_dir": "~/Downloads/iso_images",
   "block_device_filter": "usb",
   "distros": [
-    {
-      "id": "Ubuntu_24_04_amd64",
-      "label": "Ubuntu 24.04 LTS (amd64)",
-      "url": "https://releases.ubuntu.com/24.04/ubuntu-24.04.1-desktop-amd64.iso"
-    },
-    {
-      "id": "Fedora_40_Workstation_amd64",
-      "label": "Fedora 40 Workstation (x86_64)",
-      "url": "https://download.fedoraproject.org/pub/fedora/linux/releases/40/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-40-1.14.iso"
-    },
-    {
-      "id": "Debian_12_amd64",
-      "label": "Debian 12 (Bookworm) netinst (amd64)",
-      "url": "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-12.6.0-amd64-netinst.iso"
-    },
-    {
-      "id": "Arch_Linux_latest",
-      "label": "Arch Linux (latest)",
-      "url": "https://mirror.rackspace.com/archlinux/iso/latest/archlinux-x86_64.iso"
-    },
-    {
-      "id": "Linux_Mint_22_amd64",
-      "label": "Linux Mint 22 Cinnamon (amd64)",
-      "url": "https://mirrors.edge.kernel.org/linuxmint/stable/22/linuxmint-22-cinnamon-64bit.iso"
-    },
-    {
-      "id": "Manjaro_24_amd64",
-      "label": "Manjaro 24 XFCE (x86_64)",
-      "url": "https://download.manjaro.org/xfce/24.0.1/manjaro-xfce-24.0.1-240630-linux69.iso"
-    },
-    {
-      "id": "Pop_OS_22_04_amd64",
-      "label": "Pop!_OS 22.04 LTS (amd64)",
-      "url": "https://iso.pop-os.org/22.04/amd64/intel/24/pop-os_22.04_amd64_intel_24.iso"
-    },
-    {
-      "id": "elementary_7_amd64",
-      "label": "elementary OS 7 (Horus) (amd64)",
-      "url": "https://sgp1.dl.elementary.io/download/MTcyNzY4OTQyMQ==/elementaryos-7.1-stable.20240916rc.iso"
-    },
-    {
-      "id": "SystemRescue_amd64",
-      "label": "SystemRescue 10.01 (amd64)",
-      "url": "https://www.system-rescue.org/download/systemrescue-10.01-amd64.iso"
-    }
+    { "id": "Ubuntu_24_04_desktop_amd64", "label": "Daily Use — Ubuntu 24.04.3 LTS Desktop (amd64)", "url": "https://releases.ubuntu.com/24.04/ubuntu-24.04.3-desktop-amd64.iso" },
+    { "id": "Ubuntu_24_04_server_amd64",  "label": "Daily Use — Ubuntu 24.04.3 LTS Server (amd64)",  "url": "https://releases.ubuntu.com/24.04/ubuntu-24.04.3-live-server-amd64.iso" },
+    { "id": "Debian_13_1_netinst_amd64",  "label": "Daily Use — Debian 13.1.0 (Trixie) netinst (amd64)", "url": "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-13.1.0-amd64-netinst.iso" },
+    { "id": "Debian_12_7_netinst_i386",   "label": "32-bit — Debian 12.7.0 (Bookworm) netinst (i386)",   "url": "https://cdimage.debian.org/cdimage/archive/12.7.0/i386/iso-cd/debian-12.7.0-i386-netinst.iso" },
+    { "id": "Fedora_41_Workstation_x86_64","label": "Daily Use — Fedora 41 Workstation (x86_64)",        "url": "https://download.fedoraproject.org/pub/fedora/linux/releases/41/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-41-1.4.iso" },
+    { "id": "openSUSE_Leap_15_6_x86_64",   "label": "Daily Use — openSUSE Leap 15.6 DVD (x86_64)",      "url": "https://download.opensuse.org/distribution/leap/15.6/iso/openSUSE-Leap-15.6-DVD-x86_64-Media.iso" },
+    { "id": "LinuxMint_22_Cinnamon_amd64", "label": "Daily Use — Linux Mint 22 Cinnamon (amd64)",         "url": "https://mirrors.edge.kernel.org/linuxmint/stable/22/linuxmint-22-cinnamon-64bit.iso" },
+    { "id": "Arch_Linux_latest_x86_64",    "label": "Daily Use — Arch Linux (latest x86_64)",           "url": "https://mirror.rackspace.com/archlinux/iso/latest/archlinux-x86_64.iso" },
+
+    { "id": "antiX_23_386_full",           "label": "32-bit — antiX 23 (386) full",                      "url": "https://downloads.sourceforge.net/project/antix-linux/Final/antiX-23/antiX-23_386-full.iso" },
+    
+    { "id": "TinyCore_15_i386",             "label": "32-bit — TinyCore 15 (i386)",                        "url": "http://tinycorelinux.net/15.x/x86/release/TinyCore-15.0.iso" },
+
+    { "id": "Kali_amd64_installer",         "label": "Cybersecurity — Kali Linux (amd64) installer",       "url": "https://cdimage.kali.org/kali-2025.2/kali-linux-2025.2-installer-amd64.iso" },
+
+    { "id": "SystemRescue_amd64",           "label": "Repair — SystemRescue 11.00 (amd64)",               "url": "https://downloads.sourceforge.net/project/systemrescuecd/sysresccd-x86/11.00/systemrescue-11.00-amd64.iso" },
+    { "id": "GPartedLive_amd64",            "label": "Repair — GParted Live (amd64)",                    "url": "https://downloads.sourceforge.net/project/gparted/gparted-live-stable/1.5.0-1/gparted-live-1.5.0-1-amd64.iso" },
+    { "id": "Hirens_BootCD_PE_x64",         "label": "Repair — Hiren's BootCD PE (x64)",                  "url": "https://www.hirensbootcd.org/files/HBCD_PE_x64.iso" },
+
+    { "id": "Rescuezilla_amd64_jammy",      "label": "Cloning — Rescuezilla 2.4.2 64-bit (Jammy)",        "url": "https://github.com/rescuezilla/rescuezilla/releases/download/2.4.2/rescuezilla-2.4.2-64bit.jammy.iso" },
+
+    { "id": "DrWeb_LiveDisk",               "label": "Antivirus — Dr.Web LiveDisk (ISO)",                 "url": "https://download.geo.drweb.com/pub/drweb/livedisk/drweb-livedisk-900-cd.iso" },
+    
+
+    { "id": "Ubuntu_Studio_24_04_amd64",    "label": "Media/Music — Ubuntu Studio 24.04.3 (amd64)",       "url": "https://cdimage.ubuntu.com/ubuntustudio/releases/24.04.3/release/ubuntustudio-24.04.3-dvd-amd64.iso" }
+
+    
   ]
 }
-

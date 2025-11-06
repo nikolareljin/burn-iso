@@ -25,7 +25,9 @@ print_info "Installing project dependencies via script-helpers ..."
 if [[ $# -gt 0 ]]; then
   install_dependencies "$@"
 else
-  install_dependencies dialog curl jq wget util-linux coreutils
+  # Include common tools for Ventoy workflow and copying
+  # exfatprogs/exfat-utils for mounting Ventoy exFAT, rsync for copy with progress
+  install_dependencies dialog curl jq wget util-linux coreutils rsync exfatprogs exfat-utils parted
 fi
 
 print_success "Dependencies installed."

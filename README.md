@@ -26,6 +26,20 @@ Recent Changes
 - Actual app scripts were moved from `./scripts/*.sh` to `./inc/*.sh`.
 - Scripts resolve the repo root at runtime so they work via symlinks or direct `bash ./inc/<name>.sh`.
 
+Curated Distros (config.json)
+
+- I expanded `config.json` with a validated mix spanning:
+  - Daily use: Ubuntu 24.04.3, Debian 13.1, Fedora 41, openSUSE Leap 15.6, Linux Mint 22, Arch (latest)
+  - Cybersecurity: Kali Linux (installer 2025.2)
+  - Cloning/backup: Rescuezilla 2.4.2
+  - Repair tools: SystemRescue 11.00, GParted Live, Hiren's BootCD PE
+  - Antivirus: Dr.Web LiveDisk
+  - 32-bit hardware: Debian 12.7 (i386), antiX 23 (386), TinyCore 15 (i386)
+  - Media/music production: Ubuntu Studio 24.04.3
+
+- Every URL in `config.json` was checked for HTTP 200 and no 404s at the time of update.
+- Some projects (LibreELEC, OPNsense/pfSense, Raspberry Pi OS, Armbian, various photo-frame and magic mirror builds) typically distribute compressed images (`.img.xz`, `.iso.bz2`) or installers, not raw `.iso`. Those are not included here to avoid broken flashes. If you want, we can add support for auto‑decompressing images before flashing.
+
 Symlinked entrypoints
 
 - The root now contains simple entrypoints without the `.sh` suffix: `./etcher`, `./download`, `./burn`, `./setup`.
@@ -79,6 +93,29 @@ Usage
 - Config-powered utilities:
   - Download from curated list (config.json): `./download`
   - Burn an ISO from your `download_dir` (or browse): `./burn`
+
+Multi-ISO with Ventoy
+
+- In `./etcher`, you can now select multiple ISO files (from your `download_dir`).
+- If more than one ISO is selected, the tool switches to a Ventoy flow:
+  - Installs Ventoy to the selected USB device (data is erased).
+  - Optionally applies a custom background image (Ventoy theme plugin).
+  - Copies the selected ISOs to the Ventoy partition, checking free space first.
+  - If space is insufficient, you can deselect some ISOs to fit.
+
+Background Image & Preview
+
+- The tool will attempt to auto-download a matching `image-view` release binary for your OS/arch from GitHub if none is found.
+- If you prefer to manage it yourself, the repo is also added as a submodule; you can build and place the binary at `image-view/image-view`.
+- In `./etcher`, choose “Select Ventoy Background”, pick a `jpg/png/tga`, preview it, and it will be installed as a Ventoy theme background.
+
+Ventoy Requirements
+
+- The tool auto-detects Ventoy. If not found, it tries to install it:
+  - via system package manager (`apt`, `dnf`, `pacman`) if available
+  - otherwise it fetches the latest release from GitHub and unpacks under `./ventoy/`
+- It looks for `./ventoy/Ventoy2Disk.sh`, `./tools/ventoy/Ventoy2Disk.sh`, or `Ventoy2Disk.sh` on `PATH`.
+- Packages helpful for this flow (installed by `./setup`): `rsync`, `exfatprogs`/`exfat-utils`, `parted`.
 
 Notes on layout
 
