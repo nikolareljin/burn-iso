@@ -17,6 +17,10 @@ SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts}"
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging dialog file os deps
 
+# Always restore a clean terminal UI when exiting (including Cancel/interrupt)
+reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
+trap reset_tui EXIT INT TERM
+
 CONFIG_FILE="${CONFIG_FILE:-$REPO_ROOT/config.json}"
 
 DOWNLOAD_DIR=""

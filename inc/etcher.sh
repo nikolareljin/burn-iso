@@ -19,6 +19,10 @@ SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts}"
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging dialog file os json deps
 
+# Always restore a clean terminal UI when exiting (including Cancel/interrupt)
+reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
+trap reset_tui EXIT INT TERM
+
 CONFIG_FILE="${CONFIG_FILE:-$REPO_ROOT/config.json}"
 
 SELECTED_IMAGE=""
@@ -56,19 +60,72 @@ load_config() {
   DEVICE_FILTER=$(jq -r '.block_device_filter // "usb"' "$CONFIG_FILE")
 }
 
-# Install required tools if missing using script-helpers
+# Show a minimal TUI gauge while installing dependencies; suppress detailed output to a log.
+deps_install_with_dialog() {
+  local log="$REPO_ROOT/.deps_install.log"
+  : >"$log"
+  local status_file="$REPO_ROOT/.deps_status.tmp"
+  local pkgs=("$@")
+  dialog_init
+  (
+    set +e
+    install_dependencies "${pkgs[@]}" >>"$log" 2>&1 &
+    local pid=$!
+    local pct=1
+    while kill -0 "$pid" 2>/dev/null; do
+      pct=$((pct + 3)); (( pct >= 99 )) && pct=1
+      echo "XXX"; echo "$pct"; echo "Installing: ${pkgs[*]}"; echo "XXX"
+      sleep 0.3
+    done
+    wait "$pid"; local rc=$?
+    echo "$rc" >"$status_file"
+    echo "XXX"; echo 100; echo "Finalizing..."; echo "XXX"
+  ) | dialog --title "Installing Dependencies" --gauge "Preparing..." 10 "$DIALOG_WIDTH" 0
+  local rc; rc=$(cat "$status_file" 2>/dev/null || echo 1)
+  rm -f "$status_file"
+  return "$rc"
+}
+
+# Install required tools if missing using script-helpers (quiet; with TUI progress)
 ensure_deps() {
+  local log="$REPO_ROOT/.deps_install.log"
+  : >"$log"
+
+  # 1) Ensure 'dialog' exists first so we can use TUI for the rest.
+  if ! command -v dialog >/dev/null 2>&1; then
+    echo "Installing prerequisite: dialog" >>"$log"
+    # Best effort; do not spam terminal
+    install_dependencies dialog >>"$log" 2>&1 || true
+  fi
+
+  # 2) Compute remaining missing dependencies
   local pkgs=()
-  command -v dialog >/dev/null 2>&1 || pkgs+=(dialog)
-  command -v jq >/dev/null 2>&1 || pkgs+=(jq)
+  command -v jq >/dev/null 2>&1       || pkgs+=(jq)
   if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
     pkgs+=(curl wget)
   fi
-  command -v lsblk >/dev/null 2>&1 || pkgs+=(util-linux)
-  command -v dd >/dev/null 2>&1 || pkgs+=(coreutils)
+  command -v lsblk >/dev/null 2>&1    || pkgs+=(util-linux)
+  command -v dd    >/dev/null 2>&1    || pkgs+=(coreutils)
+  command -v file  >/dev/null 2>&1    || pkgs+=(file)
+  command -v rsync >/dev/null 2>&1    || pkgs+=(rsync)
+  command -v unzip >/dev/null 2>&1    || pkgs+=(unzip)
+  command -v less  >/dev/null 2>&1    || pkgs+=(less)
+  command -v xz    >/dev/null 2>&1    || pkgs+=(xz xz-utils)
+  command -v gzip  >/dev/null 2>&1    || pkgs+=(gzip)
+  # Optional preview tool: chafa (cross-platform terminal image viewer)
+  command -v chafa  >/dev/null 2>&1   || pkgs+=(chafa)
+
   if [[ ${#pkgs[@]} -gt 0 ]]; then
-    print_info "Installing missing dependencies: ${pkgs[*]}"
-    install_dependencies "${pkgs[@]}"
+    if command -v dialog >/dev/null 2>&1; then
+      if ! deps_install_with_dialog "${pkgs[@]}"; then
+        # Keep details in the log, but inform user with a concise dialog
+        dialog --title "Dependencies" --msgbox \
+          "Some dependencies failed to install.\n\nYou can review the log at:\n$log" 10 60
+      fi
+    else
+      # Fallback: install quietly without TUI
+      install_dependencies "${pkgs[@]}" >>"$log" 2>&1 || true
+    fi
   fi
 }
 
@@ -156,15 +213,28 @@ select_images_from_config_multi() {
   dialog_init
   load_config
   create_directory "$DOWNLOAD_DIR" >/dev/null || true
-  mapfile -t options < <(jq -r '.distros[] | "\(.id)\t\(.label)"' "$CONFIG_FILE")
-  if [[ ${#options[@]} -eq 0 ]]; then
+  mapfile -t rows < <(jq -r '.distros[] | "\(.id)\t\(.label)\t\(.url)"' "$CONFIG_FILE")
+  if [[ ${#rows[@]} -eq 0 ]]; then
     dialog --title "No distros" --msgbox "No distros defined in config.json" 8 50
     return 1
   fi
-  local items=()
-  local line id label
-  for line in "${options[@]}"; do
-    id="${line%%$'\t'*}"; label="${line#*$'\t'}"
+  local items=() prev_cat="" id label url cat
+  distro_category() {
+    local id="$1" label="$2" lower="${1,,} ${2,,}"
+    if [[ "$lower" == *"raspberry pi"* || "$id" == RaspberryPi_* ]]; then echo "SBC — Raspberry Pi"; return; fi
+    if [[ "$id" == Armbian_* || "$lower" == *"armbian"* ]]; then echo "SBC — Armbian / TV Box"; return; fi
+    if [[ "$lower" == *"android-x86"* || "$lower" == *"bliss os"* || "$lower" == *"lineageos"* || "$lower" == *"grapheneos"* ]]; then echo "Android / Tablet"; return; fi
+    if [[ "$lower" == *"gparted"* || "$lower" == *"rescue"* || "$lower" == *"hiren"* || "$lower" == *"clonezilla"* ]]; then echo "Utilities / Repair"; return; fi
+    if [[ "$lower" == *"surface"* || "$lower" == *"xbox"* ]]; then echo "Surface / Xbox"; return; fi
+    echo "Desktop / Linux"
+  }
+  for line in "${rows[@]}"; do
+    id="${line%%$'\t'*}"; rest="${line#*$'\t'}"; label="${rest%%$'\t'*}"; url="${line##*$'\t'}"
+    cat=$(distro_category "$id" "$label")
+    if [[ "$cat" != "$prev_cat" ]]; then
+      items+=("hdr_${cat// /_}" "==== $cat ====" off)
+      prev_cat="$cat"
+    fi
     items+=("$id" "$label" off)
   done
   local chosen
@@ -176,6 +246,7 @@ select_images_from_config_multi() {
   SELECTED_IMAGES=()
   local id url output path label errs=0
   for id in $chosen; do
+    [[ "$id" == hdr_* ]] && continue
     url=$(jq -r --arg id "$id" '.distros[] | select(.id==$id) | .url' "$CONFIG_FILE")
     label=$(jq -r --arg id "$id" '.distros[] | select(.id==$id) | .label' "$CONFIG_FILE")
     [[ -z "$url" || "$url" == "null" ]] && { errs=$((errs+1)); continue; }
@@ -184,6 +255,7 @@ select_images_from_config_multi() {
       output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
     fi
     if [[ ! -f "$output" ]]; then
+      # No extra prints; show only dialog during download
       download_with_progress "$url" "$output" "${label:-$output}" || errs=$((errs+1))
     fi
     path="$DOWNLOAD_DIR/$output"
@@ -246,23 +318,39 @@ select_image_from_config() {
   load_config
   create_directory "$DOWNLOAD_DIR" >/dev/null || true
 
-  # Build menu options from config.json
-  mapfile -t options < <(jq -r '.distros[] | "\(.id)\t\(.label)"' "$CONFIG_FILE")
-  if [[ ${#options[@]} -eq 0 ]]; then
+  # Build grouped menu options from config.json
+  mapfile -t rows < <(jq -r '.distros[] | "\(.id)\t\(.label)\t\(.url)"' "$CONFIG_FILE")
+  if [[ ${#rows[@]} -eq 0 ]]; then
     dialog --title "No distros" --msgbox "No distros defined in config.json" 8 50
     return 1
   fi
-  # Flatten into tag/label alternating items for dialog
-  local items=()
-  local line id label
-  for line in "${options[@]}"; do
-    id="${line%%$'\t'*}"
-    label="${line#*$'\t'}"
+  # Flatten into tag/label alternating items for dialog, with headers
+  local items=() prev_cat="" id label url cat
+  distro_category() {
+    local id="$1" label="$2" lower="${1,,} ${2,,}"
+    if [[ "$lower" == *"raspberry pi"* || "$id" == RaspberryPi_* ]]; then echo "SBC — Raspberry Pi"; return; fi
+    if [[ "$id" == Armbian_* || "$lower" == *"armbian"* ]]; then echo "SBC — Armbian / TV Box"; return; fi
+    if [[ "$lower" == *"android-x86"* || "$lower" == *"bliss os"* || "$lower" == *"lineageos"* || "$lower" == *"grapheneos"* ]]; then echo "Android / Tablet"; return; fi
+    if [[ "$lower" == *"gparted"* || "$lower" == *"rescue"* || "$lower" == *"hiren"* || "$lower" == *"clonezilla"* ]]; then echo "Utilities / Repair"; return; fi
+    if [[ "$lower" == *"surface"* || "$lower" == *"xbox"* ]]; then echo "Surface / Xbox"; return; fi
+    echo "Desktop / Linux"
+  }
+  for line in "${rows[@]}"; do
+    id="${line%%$'\t'*}"; rest="${line#*$'\t'}"; label="${rest%%$'\t'*}"; url="${line##*$'\t'}"
+    cat=$(distro_category "$id" "$label")
+    if [[ "$cat" != "$prev_cat" ]]; then
+      items+=("hdr_${cat// /_}" "==== $cat ====")
+      prev_cat="$cat"
+    fi
     items+=("$id" "$label")
   done
 
   local chosen
-  chosen=$(dialog --stdout --title "$(title) — Choose Distro" --menu "Pick a distro to download" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 0 "${items[@]}") || return 1
+  while true; do
+    chosen=$(dialog --stdout --title "$(title) — Choose Distro" --menu "Pick a distro to download" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 0 "${items[@]}") || return 1
+    [[ "$chosen" == hdr_* ]] && continue
+    break
+  done
 
   local url output path label
   url=$(jq -r --arg id "$chosen" '.distros[] | select(.id==$id) | .url' "$CONFIG_FILE")
@@ -279,7 +367,7 @@ select_image_from_config() {
     output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
   fi
 
-  print_info "Downloading ${label:-$url} -> $output"
+  # Avoid extra stdout noise during the dialog gauge
   if ! download_with_progress "$url" "$output" "${label:-$output}"; then
     popd >/dev/null
     dialog --title "Error" --msgbox "Download failed for: $output" 8 50
@@ -369,17 +457,55 @@ flash_image() {
   else
     total=$(stat -f%z "$SELECTED_IMAGE" 2>/dev/null || echo 0)
   fi
-  local dd_args=(dd if="$SELECTED_IMAGE" of="$dev" bs=4M conv=fsync status=progress)
+
+  # Handle compressed images by streaming decompression to dd
+  local lower_img="${SELECTED_IMAGE,,}" use_stream=false stream_cmd=()
+  if [[ "$lower_img" == *.img.xz || "$lower_img" == *.xz ]]; then
+    if command -v xz >/dev/null 2>&1; then
+      stream_cmd=(xz -dc "$SELECTED_IMAGE")
+      use_stream=true
+      total=0
+    else
+      dialog --title "Missing tool" --msgbox "xz not found to decompress image. Install xz/xz-utils and try again." 9 60
+      return 1
+    fi
+  elif [[ "$lower_img" == *.img.gz || "$lower_img" == *.gz ]]; then
+    if command -v gzip >/dev/null 2>&1; then
+      stream_cmd=(gzip -dc "$SELECTED_IMAGE")
+      use_stream=true
+      total=0
+    else
+      dialog --title "Missing tool" --msgbox "gzip not found to decompress image." 7 50
+      return 1
+    fi
+  fi
+
+  local dd_args
+  if $use_stream; then
+    dd_args=(dd of="$dev" bs=4M conv=fsync status=progress)
+  else
+    dd_args=(dd if="$SELECTED_IMAGE" of="$dev" bs=4M conv=fsync status=progress)
+  fi
   local prefix=(); command -v sudo >/dev/null 2>&1 && prefix=(sudo)
   (
     set +e
-    "${prefix[@]}" "${dd_args[@]}" 2>&1 |
+    if $use_stream; then
+      "${stream_cmd[@]}" | "${prefix[@]}" "${dd_args[@]}" 2>&1 |
+      awk -v total="$total" '
+        /^[0-9]+ bytes/ {
+          cur=$1; pct=(total>0)?int(cur*100/total):0; if (pct>100)pct=100;
+          print "XXX"; print pct; printf("Writing (decompressing)... %s bytes\n", cur); print "XXX"; fflush();
+        }
+      END { print "XXX"; print 100; print "Finalizing..."; print "XXX"; fflush(); }'
+    else
+      "${prefix[@]}" "${dd_args[@]}" 2>&1 |
       awk -v total="$total" '
         /^[0-9]+ bytes/ {
           cur=$1; pct=(total>0)?int(cur*100/total):0; if (pct>100)pct=100;
           print "XXX"; print pct; printf("Writing... %s bytes\n", cur); print "XXX"; fflush();
         }
       END { print "XXX"; print 100; print "Finalizing..."; print "XXX"; fflush(); }'
+    fi
     status=$?
     echo "$status" >"$REPO_ROOT/.flash_status.tmp"
   ) | dialog --title "Flashing to $dev" --gauge "Starting..." 12 "$DIALOG_WIDTH" 0
@@ -572,10 +698,30 @@ select_background_image() {
     [[ -x "$viewer" ]] && break || viewer=""
   done
   if [[ -n "$viewer" ]]; then
+    # Launch external viewer; user closes it normally (e.g., window close or ESC if supported)
     "$viewer" "$SELECTED_BACKGROUND" || true
-  else
-    print_warning "image-view binary not found. Add submodule and build to enable previews."
+    return 0
   fi
+
+  if command -v chafa >/dev/null 2>&1; then
+    # Render preview in the terminal and keep it open in less until user presses 'q' to quit.
+    # This provides a simple "press q to close" interaction.
+    local err_file; err_file="$(mktemp)"
+    set +e
+    chafa "$SELECTED_BACKGROUND" 2>"$err_file" | less -R
+    local chafa_rc=${PIPESTATUS[0]}
+    set -e
+    if [[ $chafa_rc -ne 0 ]]; then
+      local emsg; emsg=$(cat "$err_file")
+      rm -f "$err_file"
+      dialog --title "chafa error" --msgbox "Failed to preview image with 'chafa'.\n\nError:\n${emsg}" 12 70
+      return 1
+    fi
+    rm -f "$err_file"
+    return 0
+  fi
+
+  print_warning "No preview tool available (image-view/chafa). Skipping preview."
 }
 
 # Ensure an image-view binary is available; try to download a release asset for current OS/arch

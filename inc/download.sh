@@ -16,6 +16,10 @@ SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts}"
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging dialog file os deps
 
+# Always restore a clean terminal UI when exiting (including Cancel/interrupt)
+reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
+trap reset_tui EXIT INT TERM
+
 CONFIG_FILE="${CONFIG_FILE:-$REPO_ROOT/config.json}"
 
 require_tool() {
@@ -104,38 +108,53 @@ dialog_init
 load_config
 create_directory "$DOWNLOAD_DIR" >/dev/null || true
 
-##############################################################
-# Build selection using script-helpers default dialog helpers #
-##############################################################
-# Prepare associative arrays expected by script-helpers select_* helpers.
-# DISTROS is used for display (value shown under each ID), so we map to the
-# human-friendly label from config. We also keep a URLS map for later use.
-declare -A DISTROS
+############################################################
+# Build grouped checklist (consistent order + visual headers)
+############################################################
+
+# Return category for an id/label pair
+distro_category() {
+  local id="$1" label="$2" lower="${1,,} ${2,,}"
+  if [[ "$lower" == *"raspberry pi"* || "$id" == RaspberryPi_* ]]; then echo "SBC — Raspberry Pi"; return; fi
+  if [[ "$id" == Armbian_* || "$lower" == *"armbian"* ]]; then echo "SBC — Armbian / TV Box"; return; fi
+  if [[ "$lower" == *"android-x86"* || "$lower" == *"bliss os"* || "$lower" == *"lineageos"* || "$lower" == *"grapheneos"* ]]; then echo "Android / Tablet"; return; fi
+  if [[ "$lower" == *"gparted"* || "$lower" == *"rescue"* || "$lower" == *"hiren"* || "$lower" == *"clonezilla"* ]]; then echo "Utilities / Repair"; return; fi
+  if [[ "$lower" == *"surface"* || "$lower" == *"xbox"* ]]; then echo "Surface / Xbox"; return; fi
+  echo "Desktop / Linux"
+}
+
 declare -A URLS
-
-while IFS=$'\t' read -r id label url; do
-  [[ -z "$id" || -z "$label" || -z "$url" ]] && continue
-  DISTROS["$id"]="$label"
-  URLS["$id"]="$url"
-done < <(jq -r '.distros[] | "\(.id)\t\(.label)\t\(.url)"' "$CONFIG_FILE")
-
-if [[ ${#DISTROS[@]} -eq 0 ]]; then
+mapfile -t rows < <(jq -r '.distros[] | "\(.id)\t\(.label)\t\(.url)"' "$CONFIG_FILE")
+if [[ ${#rows[@]} -eq 0 ]]; then
   print_error "No distros defined in config.json"
   exit 1
 fi
 
-# Use the default multi-select dialog from script-helpers
-selected=$(select_multiple_distros) || {
+items=()
+prev_cat=""
+for line in "${rows[@]}"; do
+  id="${line%%$'\t'*}"; rest="${line#*$'\t'}"; label="${rest%%$'\t'*}"; url="${line##*$'\t'}"
+  URLS["$id"]="$url"
+  cat=$(distro_category "$id" "$label")
+  if [[ "$cat" != "$prev_cat" ]]; then
+    items+=("hdr_${cat// /_}" "==== $cat ====" off)
+    prev_cat="$cat"
+  fi
+  items+=("$id" "$label" off)
+done
+
+selected=$(dialog --stdout --title "Download ISOs" --checklist "Select one or more distros to download" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 0 "${items[@]}") || {
   print_warning "No selection made. Exiting."
   exit 1
 }
 
-# The helper returns a space-separated list of quoted IDs; strip quotes.
 selected=$(sed 's/\"//g' <<<"$selected")
 
 pushd "$DOWNLOAD_DIR" >/dev/null
 errors=0
 for id in $selected; do
+  # Skip category headers if user selected them
+  if [[ "$id" == hdr_* ]]; then continue; fi
   url="${URLS[$id]:-}"
   label="${DISTROS[$id]:-}" # human-friendly name for the gauge
   if [[ -z "$url" || "$url" == "null" ]]; then
@@ -145,8 +164,7 @@ for id in $selected; do
   if [[ "$output" != *.* ]]; then
     output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
   fi
-  print_info "Downloading $label -> $output"
-  # Use the label for the gauge text to show a friendly name
+  # Do not print extra lines while downloading; rely on dialog gauge only.
   if ! download_with_progress "$url" "$output" "$label"; then
     print_error "Failed to download $id"
     errors=$((errors+1))
