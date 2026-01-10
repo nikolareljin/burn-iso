@@ -71,13 +71,15 @@ download_with_progress() {
   cl=$(curl -sI -L "$url" | awk 'tolower($1)=="content-length:"{print $2}' | tail -1 | tr -d '\r') || true
   [[ -n "$cl" && "$cl" =~ ^[0-9]+$ ]] && total_bytes=$cl || total_bytes=0
 
+  local errfile
+  errfile=$(mktemp "/tmp/isoforge-download.XXXXXX.log")
   (
     set +e
     if command -v curl >/dev/null 2>&1; then
-      curl -L -o "$output" "$url" &
+      curl -L --fail -sS -o "$output" "$url" >"$errfile" 2>&1 &
       pid=$!
     else
-      wget -O "$output" "$url" &
+      wget -q -O "$output" "$url" >"$errfile" 2>&1 &
       pid=$!
     fi
     while kill -0 "$pid" 2>/dev/null; do
@@ -99,6 +101,12 @@ download_with_progress() {
 
   local status; status=$(cat "$REPO_ROOT/.dl_status.tmp" 2>/dev/null || echo 1)
   rm -f "$REPO_ROOT/.dl_status.tmp"
+  if [[ "$status" -ne 0 ]]; then
+    dialog --title "Download failed" --msgbox \
+      "Download failed. See log:\n$errfile" 10 60
+  else
+    rm -f "$errfile"
+  fi
   return "$status"
 }
 
