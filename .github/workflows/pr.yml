@@ -1,0 +1,10 @@
+name: PR
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  gate:
+    uses: nikolareljin/ci-helpers/.github/workflows/ci.yml@production
+    with:
+      build_command: "./tools/gen-man.sh && git diff --exit-code docs/man/isoforge.1 && bash -n inc/isoforge.sh inc/burn.sh inc/download.sh inc/setup.sh"

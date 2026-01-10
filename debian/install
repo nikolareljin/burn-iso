@@ -1,0 +1,5 @@
+inc/isoforge.sh usr/bin/isoforge
+config.json usr/share/isoforge/config.json
+VERSION usr/share/isoforge/VERSION
+scripts/ usr/share/isoforge/scripts/
+docs/man/isoforge.1 usr/share/man/man1/

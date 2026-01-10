@@ -1,29 +1,65 @@
 #!/usr/bin/env bash
+# SCRIPT: isoforge.sh
+# DESCRIPTION: Isoforge TUI for downloading and flashing ISOs to USB, including Ventoy multi-ISO.
+# USAGE: isoforge [--config PATH] [--version] [--help]
+# EXAMPLE: isoforge --config ./config.json
+# PARAMETERS:
+#   --config PATH  Override config file path.
+#   --version      Print version and exit.
+#   -h, --help     Show help and exit.
+# ----------------------------------------------------
 set -euo pipefail
 
-# CLI Etcher-like interface using dialog
+# CLI Isoforge-like interface using dialog
 # Steps: Select Image -> Select Drive -> Flash!
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Resolve repo root so script works whether run via root-level symlink or directly
-if [[ -d "$SCRIPT_DIR/scripts" && -f "$SCRIPT_DIR/config.json" ]]; then
-  REPO_ROOT="$SCRIPT_DIR"
-elif [[ -f "$SCRIPT_DIR/../config.json" && -d "$SCRIPT_DIR/../scripts" ]]; then
-  REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-else
-  REPO_ROOT="$SCRIPT_DIR"
+ISOFORGE_ROOT="${ISOFORGE_ROOT:-}"
+if [[ -z "$ISOFORGE_ROOT" && -f "/usr/share/isoforge/config.json" ]]; then
+  ISOFORGE_ROOT="/usr/share/isoforge"
 fi
-SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts}"
+if [[ -z "$ISOFORGE_ROOT" ]]; then
+  # Resolve repo root so script works whether run via root-level symlink or directly
+  if [[ -d "$SCRIPT_DIR/scripts/script-helpers" && -f "$SCRIPT_DIR/config.json" ]]; then
+    ISOFORGE_ROOT="$SCRIPT_DIR"
+  elif [[ -f "$SCRIPT_DIR/../config.json" && -d "$SCRIPT_DIR/../scripts/script-helpers" ]]; then
+    ISOFORGE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+  else
+    ISOFORGE_ROOT="$SCRIPT_DIR"
+  fi
+fi
+REPO_ROOT="$ISOFORGE_ROOT"
+SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts/script-helpers}"
 
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
-shlib_import logging dialog file os json deps
+shlib_import logging help dialog file os json deps
 
 # Always restore a clean terminal UI when exiting (including Cancel/interrupt)
 reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
 trap reset_tui EXIT INT TERM
 
 CONFIG_FILE="${CONFIG_FILE:-$REPO_ROOT/config.json}"
+
+usage() {
+  display_help "$0"
+}
+
+VERSION_FILE="$REPO_ROOT/VERSION"
+VERSION="${ISOFORGE_VERSION:-}"
+if [[ -z "$VERSION" && -f "$VERSION_FILE" ]]; then
+  VERSION="$(cat "$VERSION_FILE" 2>/dev/null || true)"
+fi
+VERSION="${VERSION:-0.1.0}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --config) CONFIG_FILE="$2"; shift 2;;
+    --version) echo "$VERSION"; exit 0;;
+    -h|--help) usage; exit 0;;
+    *) print_error "Unknown argument: $1"; usage; exit 2;;
+  esac
+done
 
 SELECTED_IMAGE=""
 SELECTED_DEVICE=""
@@ -177,7 +213,7 @@ download_with_progress() {
   return "$status"
 }
 
-title() { echo "Etcher (CLI) — burn-iso"; }
+title() { echo "Isoforge (CLI) — burn-iso"; }
 
 show_summary() {
   local img="${SELECTED_IMAGE:-<not selected>}"

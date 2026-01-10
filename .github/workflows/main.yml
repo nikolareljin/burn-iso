@@ -1,0 +1,46 @@
+name: Main
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deb:
+    uses: nikolareljin/ci-helpers/.github/workflows/deb-build.yml@production
+    with:
+      working_directory: "."
+      prebuild_command: "git submodule update --init --recursive && ./tools/gen-man.sh"
+      artifact_glob: "../*.deb"
+
+  ppa:
+    uses: nikolareljin/ci-helpers/.github/workflows/ppa-deb.yml@production
+    with:
+      working_directory: "."
+      prebuild_command: "git submodule update --init --recursive && ./tools/gen-man.sh"
+      ppa_target: "ppa:your-launchpad-id/isoforge"
+      deb_fullname: "Nikola Reljin"
+      deb_email: "nikola.reljin@gmail.com"
+      signing_key_id: ${{ secrets.PPA_GPG_KEY_ID }}
+    secrets:
+      gpg_private_key: ${{ secrets.PPA_GPG_PRIVATE_KEY }}
+      gpg_passphrase: ${{ secrets.PPA_GPG_PASSPHRASE }}
+      launchpad_ssh_private_key: ${{ secrets.PPA_SSH_PRIVATE_KEY }}
+
+  rpm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: recursive
+      - name: Install RPM tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm rpmbuild rsync
+      - name: Build RPM
+        run: ./tools/build-rpm.sh
+      - name: Upload RPM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-packages
+          path: dist/*.rpm

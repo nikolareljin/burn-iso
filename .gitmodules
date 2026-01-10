@@ -1,6 +1,6 @@
-[submodule "scripts"]
-	path = scripts
-	url = git@github.com:nikolareljin/script-helpers.git
+[submodule "scripts/script-helpers"]
+	path = scripts/script-helpers
+	url = https://github.com/nikolareljin/script-helpers.git
 	branch = main
 
 [submodule "image-view"]

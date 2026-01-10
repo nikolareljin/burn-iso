@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning when applicable.
 
+## 2026-01-09
+
+### Breaking
+- Renamed the primary CLI to `isoforge`; the `etcher` entrypoint is removed.
+- Installable packages now provide `/usr/bin/isoforge` and `/usr/share/isoforge/config.json`.
+
+### Packaging
+- Added Debian, PPA, and RPM packaging support with CI workflows.
+
 ## 2025-11-07
 
 - Created this changelog and summarized recent work.
@@ -50,4 +59,3 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ### Etcher
 - Downloads within Etcher also use friendly labels in the gauge and suppress extra prints.
-

@@ -1,4 +1,4 @@
-Burn ISO Utilities
+Isoforge
 
 Simple shell scripts for downloading popular Linux ISOs and burning them to a USB device using `dialog` for UI prompts.
 
@@ -9,7 +9,7 @@ Repository
 
 Important: Clone With Submodules
 
-- This repo uses a Git submodule in `./scripts` for shared helpers. Clone with `--recurse-submodules`.
+- This repo uses a Git submodule in `./scripts/script-helpers` for shared helpers. Clone with `--recurse-submodules`.
 - Fresh clone (SSH):
   - `git clone --recurse-submodules git@github.com:nikolareljin/burn-iso.git`
   - `cd burn-iso`
@@ -22,8 +22,8 @@ Important: Clone With Submodules
 
 Recent Changes
 
-- Root commands are short symlinks (`./etcher`, `./download`, `./burn`, `./setup`).
-- Actual app scripts were moved from `./scripts/*.sh` to `./inc/*.sh`.
+- Root commands are short symlinks (`./isoforge`, `./download`, `./burn`, `./setup`).
+- Actual app scripts were moved from `./scripts/script-helpers/scripts/*.sh` to `./inc/*.sh`.
 - Scripts resolve the repo root at runtime so they work via symlinks or direct `bash ./inc/<name>.sh`.
 
 Curated Distros (config.json)
@@ -42,20 +42,20 @@ Curated Distros (config.json)
 
 Symlinked entrypoints
 
-- The root now contains simple entrypoints without the `.sh` suffix: `./etcher`, `./download`, `./burn`, `./setup`.
+- The root now contains simple entrypoints without the `.sh` suffix: `./isoforge`, `./download`, `./burn`, `./setup`.
 - These are symlinks pointing to the actual scripts in `./inc/*.sh`.
 - This keeps the root clean and makes commands shorter to run.
 
-Etcher for the CLI
+Isoforge for the CLI
 
-- Use `./etcher` for a simple, Etcher-like flow in your terminal:
+- Use `./isoforge` for a simple, Etcher-like flow in your terminal:
   - Select Image (download from curated list or pick a local .iso)
   - Select Drive (USB by default)
   - Flash (with progress gauge)
 
 Submodule Layout
 
-- Submodule `scripts/` points to `git@github.com:nikolareljin/script-helpers.git` and provides common helpers (logging, dialog, deps, file, etc.).
+- Submodule `scripts/script-helpers` points to `git@github.com:nikolareljin/script-helpers.git` and provides common helpers (logging, dialog, deps, file, etc.).
   - Tracks branch: `main`.
 
 Clone With Submodules
@@ -74,9 +74,9 @@ Update Submodule (main)
 
 - Pull latest helper scripts from `main` and record the update:
   - `git submodule update --remote --recursive`
-  - `git add scripts && git commit -m "Update script-helpers to latest main"`
+  - `git add scripts/script-helpers && git commit -m "Update script-helpers to latest main"`
 
-Note: SSH access is required for the submodule URL `git@github.com:nikolareljin/script-helpers.git`. If needed, you can switch it to HTTPS using `git config -f .gitmodules submodule.scripts.url https://github.com/nikolareljin/script-helpers.git && git submodule sync --recursive`.
+Note: SSH access is required for the submodule URL `git@github.com:nikolareljin/script-helpers.git`. If needed, you can switch it to HTTPS using `git config -f .gitmodules submodule.scripts/script-helpers.url https://github.com/nikolareljin/script-helpers.git && git submodule sync --recursive`.
 
 Install Dependencies
 
@@ -87,8 +87,8 @@ Install Dependencies
 
 Usage
 
-- Etcher-like TUI:
-  - `./etcher`
+- Isoforge-like TUI:
+  - `./isoforge`
 
 - Config-powered utilities:
   - Download from curated list (config.json): `./download`
@@ -96,7 +96,7 @@ Usage
 
 Multi-ISO with Ventoy
 
-- In `./etcher`, you can now select multiple ISO files (from your `download_dir`).
+- In `./isoforge`, you can now select multiple ISO files (from your `download_dir`).
 - If more than one ISO is selected, the tool switches to a Ventoy flow:
   - Installs Ventoy to the selected USB device (data is erased).
   - Optionally applies a custom background image (Ventoy theme plugin).
@@ -107,7 +107,7 @@ Background Image & Preview
 
 - The tool will attempt to auto-download a matching `image-view` release binary for your OS/arch from GitHub if none is found.
 - If you prefer to manage it yourself, the repo is also added as a submodule; you can build and place the binary at `image-view/image-view`.
-- In `./etcher`, choose “Select Ventoy Background”, pick a `jpg/png/tga`, preview it, and it will be installed as a Ventoy theme background.
+- In `./isoforge`, choose “Select Ventoy Background”, pick a `jpg/png/tga`, preview it, and it will be installed as a Ventoy theme background.
 
 Ventoy Requirements
 
@@ -117,10 +117,38 @@ Ventoy Requirements
 - It looks for `./ventoy/Ventoy2Disk.sh`, `./tools/ventoy/Ventoy2Disk.sh`, or `Ventoy2Disk.sh` on `PATH`.
 - Packages helpful for this flow (installed by `./setup`): `rsync`, `exfatprogs`/`exfat-utils`, `parted`.
 
+Installable CLI
+
+- System install usage:
+  - `isoforge [--config PATH] [--version] [--help]`
+- Default config when installed:
+  - `/usr/share/isoforge/config.json`
+- Man page:
+  - `man isoforge`
+
+Packaging
+
+- Debian/Ubuntu:
+  - Build `.deb`: `./tools/build-deb.sh`
+  - Upload to PPA: `./tools/ppa-upload.sh --ppa ppa:your-launchpad-id/isoforge --key-id <GPG_KEY_ID>`
+- RPM (RedHat-based):
+  - Build `.rpm`: `./tools/build-rpm.sh`
+
+CI uses `ci-helpers` workflows for Debian builds and PPA uploads. See `docs/CI.md`.
+
+Publishing
+
+- PPA publishing requires GPG signing and Launchpad SSH credentials.
+- Update the distro series in `debian/changelog` before uploading.
+
+Man page regeneration
+
+- Regenerate `docs/man/isoforge.1`: `./tools/gen-man.sh`
+
 Notes on layout
 
 - App scripts live in `./inc/*.sh`; root-level commands are symlinks.
-- The `scripts/` directory is a submodule providing helper libraries; app scripts use it via `SCRIPT_HELPERS_DIR`.
+- The `scripts/script-helpers` directory is a submodule providing helper libraries; app scripts use it via `SCRIPT_HELPERS_DIR`.
 - Advanced users can invoke the underlying scripts with `bash ./inc/<name>.sh`, but the recommended way is via the root symlinks shown above.
 
 Screenshots (CLI)
@@ -129,18 +157,19 @@ Layout and symlinks
 
 ```
 $ ls -l
-lrwxrwxrwx 1 user user   13 Nov  2  etcher   -> inc/etcher.sh
+lrwxrwxrwx 1 user user   14 Nov  2  isoforge -> inc/isoforge.sh
 lrwxrwxrwx 1 user user   15 Nov  2  download -> inc/download.sh
 lrwxrwxrwx 1 user user   11 Nov  2  burn     -> inc/burn.sh
 lrwxrwxrwx 1 user user   12 Nov  2  setup    -> inc/setup.sh
 drwxr-xr-x 2 user user 4096 Nov  2  inc/
-drwxr-xr-x 5 user user 4096 Nov  2  scripts/   # helper submodule
+drwxr-xr-x 5 user user 4096 Nov  2  scripts/   # local scripts
+drwxr-xr-x 5 user user 4096 Nov  2  scripts/script-helpers   # helper submodule
 ```
 
-Etcher-like flow
+Isoforge flow
 
 ```
-$ ./etcher
+$ ./isoforge
 Image: <not selected>
 Drive: <not selected>
 
@@ -176,7 +205,7 @@ Flashing to /dev/sdb
 
 Environment Overrides
 
-- Set `SCRIPT_HELPERS_DIR` to point to a custom helpers location if not using the `scripts/` submodule path.
+- Set `SCRIPT_HELPERS_DIR` to point to a custom helpers location if not using the `scripts/script-helpers` submodule path.
 
 Configuration
 

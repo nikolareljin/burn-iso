@@ -1,1 +1,31 @@
-# Ignore files and directories
+# Local logs/temp
+.deps_install.log
+.tmp_config.json
+.mockbin/
+test_downloads/
+ventoy/
+dist/
+
+# Packaging artifacts
+*.deb
+*.dsc
+*.changes
+*.buildinfo
+*.rpm
+*.srpm
+*.tar.gz
+*.tar.xz
+*.tar.zst
+*.log
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/*.substvars
+debian/*.log
+
+# OS/editor
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
