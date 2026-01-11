@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -45,7 +45,7 @@ def main() -> None:
     header = parse_header(script)
     usage = header["usage"] or "isoforge [options]"
     description = header["description"] or "TUI for downloading and flashing ISOs to USB."
-    date = datetime.utcnow().strftime("%Y-%m-%d")
+    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     lines = [
         f'.TH ISOFORGE 1 "{date}" "isoforge {version}" "User Commands"',
