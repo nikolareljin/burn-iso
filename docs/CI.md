@@ -14,6 +14,7 @@
 ## Required GitHub Variables (PPA)
 
 - `PPA_GPG_KEY_ID`: key ID or fingerprint (non-secret).
+- `PPA_PUBLISH_ENABLED`: set to `true` to enable the PPA publish job.
 
 ## PPA target
 
