@@ -140,6 +140,7 @@ Publishing
 
 - PPA publishing requires GPG signing and Launchpad SSH credentials.
 - Update the distro series in `debian/changelog` before uploading.
+- Set `PPA_GPG_KEY_ID` as a GitHub repository variable (non-secret).
 
 Man page regeneration
 

@@ -12,6 +12,7 @@ jobs:
       artifact_glob: "../*.deb"
 
   ppa:
+    if: ${{ secrets.PPA_GPG_PRIVATE_KEY != '' && secrets.PPA_GPG_PASSPHRASE != '' && secrets.PPA_SSH_PRIVATE_KEY != '' && vars.PPA_GPG_KEY_ID != '' }}
     uses: nikolareljin/ci-helpers/.github/workflows/ppa-deb.yml@production
     with:
       working_directory: "."
@@ -19,7 +20,7 @@ jobs:
       ppa_target: "ppa:your-launchpad-id/isoforge"
       deb_fullname: "Nikola Reljin"
       deb_email: "nikola.reljin@gmail.com"
-      signing_key_id: ${{ secrets.PPA_GPG_KEY_ID }}
+      signing_key_id: ${{ vars.PPA_GPG_KEY_ID }}
     secrets:
       gpg_private_key: ${{ secrets.PPA_GPG_PRIVATE_KEY }}
       gpg_passphrase: ${{ secrets.PPA_GPG_PASSPHRASE }}

@@ -9,8 +9,11 @@
 
 - `PPA_GPG_PRIVATE_KEY`: armored private key for signing the source package.
 - `PPA_GPG_PASSPHRASE`: passphrase for the signing key.
-- `PPA_GPG_KEY_ID`: key ID or fingerprint.
 - `PPA_SSH_PRIVATE_KEY`: SSH key registered with Launchpad.
+
+## Required GitHub Variables (PPA)
+
+- `PPA_GPG_KEY_ID`: key ID or fingerprint (non-secret).
 
 ## PPA target
 
