@@ -16,6 +16,10 @@ fi
 SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts}"
 
 # shellcheck source=/dev/null
+source "$REPO_ROOT/inc/setup.sh"
+ensure_helpers_library
+
+# shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging dialog file os json deps
 
