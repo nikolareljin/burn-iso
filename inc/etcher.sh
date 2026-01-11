@@ -15,11 +15,9 @@ else
 fi
 SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts}"
 
-if [[ ! -f "$SCRIPT_HELPERS_DIR/helpers.sh" ]]; then
-  >&2 printf "Missing required helper library: %s\n" "$SCRIPT_HELPERS_DIR/helpers.sh"
-  >&2 printf "Please install project submodules (e.g. run 'git submodule update --init --recursive') and retry.\n"
-  exit 1
-fi
+# shellcheck source=/dev/null
+source "$REPO_ROOT/inc/setup.sh"
+ensure_helpers_library
 
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
