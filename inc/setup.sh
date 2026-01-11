@@ -14,6 +14,16 @@ else
 fi
 SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts/script-helpers}"
 
+ensure_helpers_library() {
+  local helpers_path="${1:-$SCRIPT_HELPERS_DIR/helpers.sh}"
+  if [[ ! -f "$helpers_path" ]]; then
+    >&2 printf "Missing required helper library: %s\n" "$helpers_path"
+    >&2 printf "Please install project submodules (e.g. run 'git submodule update --init --recursive') and retry.\n"
+    exit 1
+  fi
+}
+
+ensure_helpers_library "$SCRIPT_HELPERS_DIR/helpers.sh"
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging deps os
