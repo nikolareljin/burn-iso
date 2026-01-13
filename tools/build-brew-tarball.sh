@@ -7,13 +7,19 @@ SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts/script-helpers}"
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging
 
-helper="$REPO_ROOT/scripts/script-helpers/scripts/build_rpm_artifacts.sh"
+helper="$REPO_ROOT/scripts/script-helpers/scripts/build_brew_tarball.sh"
 if [[ -x "$helper" ]]; then
   exec "$helper" \
+    --name "isoforge" \
     --repo "$REPO_ROOT" \
-    --spec "$REPO_ROOT/packaging/isoforge.spec" \
-    --prebuild "./tools/gen-man.sh" \
-    --artifact-dir "$REPO_ROOT/dist"
+    --dist-dir "$REPO_ROOT/dist" \
+    --exclude ".git" \
+    --exclude ".github" \
+    --exclude "dist" \
+    --exclude ".deps_install.log" \
+    --exclude ".tmp_config.json" \
+    --exclude ".mockbin" \
+    --exclude "test_downloads"
 fi
 
 log_error "script-helpers not initialized. Run: git submodule update --init --recursive"

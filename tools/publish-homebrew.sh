@@ -7,13 +7,13 @@ SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts/script-helpers}"
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging
 
-helper="$REPO_ROOT/scripts/script-helpers/scripts/build_rpm_artifacts.sh"
+helper="$REPO_ROOT/scripts/script-helpers/scripts/publish_homebrew.sh"
 if [[ -x "$helper" ]]; then
   exec "$helper" \
-    --repo "$REPO_ROOT" \
-    --spec "$REPO_ROOT/packaging/isoforge.spec" \
-    --prebuild "./tools/gen-man.sh" \
-    --artifact-dir "$REPO_ROOT/dist"
+    --formula "${HOMEBREW_FORMULA_PATH:-$REPO_ROOT/packaging/homebrew/isoforge.rb}" \
+    --tap-repo "${HOMEBREW_TAP_REPO:-}" \
+    --tap-branch "${HOMEBREW_TAP_BRANCH:-main}" \
+    --commit-message "Update isoforge formula"
 fi
 
 log_error "script-helpers not initialized. Run: git submodule update --init --recursive"

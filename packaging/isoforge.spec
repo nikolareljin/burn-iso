@@ -1,5 +1,5 @@
 Name:           isoforge
-Version:        1.0.0
+Version:        %{version}
 Release:        1%{?dist}
 Summary:        TUI tool for downloading and flashing ISO images to USB
 License:        MIT

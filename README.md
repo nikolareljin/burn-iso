@@ -133,6 +133,10 @@ Packaging
   - Upload to PPA: `./tools/ppa-upload.sh --ppa ppa:your-launchpad-id/isoforge --key-id <GPG_KEY_ID>`
 - RPM (RedHat-based):
   - Build `.rpm`: `./tools/build-rpm.sh`
+- Homebrew:
+  - Build tarball + formula: `./tools/build-brew-tarball.sh && ./tools/gen-brew-formula.sh`
+  - Publish formula: `./tools/publish-homebrew.sh`
+  - Install from tap: `brew install <tap>/isoforge`
 
 CI uses `ci-helpers` workflows for Debian builds and PPA uploads. See `docs/CI.md`.
 
@@ -142,6 +146,7 @@ Publishing
 - Update the distro series in `debian/changelog` before uploading.
 - Set `PPA_GPG_KEY_ID` as a GitHub repository variable (non-secret).
 - Set `PPA_PUBLISH_ENABLED=true` as a GitHub repository variable to enable PPA publishing.
+- Homebrew publishing requires a tap repo and token (`HOMEBREW_TAP_REPO`, `HOMEBREW_TAP_TOKEN`).
 
 Man page regeneration
 
