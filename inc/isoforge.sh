@@ -583,7 +583,20 @@ flash_with_ventoy() {
     return 1
   fi
   local part mnt
-  part=$(lsblk -ln -o NAME,TYPE "/dev/$SELECTED_DEVICE" | awk '$2=="part"{print $1}' | head -1)
+  part=$(
+    lsblk -ln -b -o NAME,TYPE,SIZE,LABEL "/dev/$SELECTED_DEVICE" | awk '
+      $2=="part" {
+        name=$1; size=$3; label=$4;
+        if (label != "VTOYEFI" && size > best_size) {
+          best_size=size; best=name;
+        }
+        if (size > max_size) {
+          max_size=size; max=name;
+        }
+      }
+      END { if (best != "") print best; else print max }
+    '
+  )
   if [[ -z "$part" ]]; then
     dialog --title "Ventoy" --msgbox "Could not locate Ventoy data partition." 7 60
     return 1
