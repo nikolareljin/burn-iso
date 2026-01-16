@@ -49,7 +49,7 @@
     { "id": "ParrotOS_5_2_amd64",           "label": "Parrot OS 5.2 Security — Intel/AMD 64-bit (amd64)",     "url": "https://download.parrot.sh/parrot/iso/5.2/Parrot-security-5.2_amd64.iso" },
     { "id": "ParrotOS_5_2_arm64",           "label": "Parrot OS 5.2 Security — ARM64 (aarch64)",              "url": "https://download.parrot.sh/parrot/iso/5.2/Parrot-security-5.2_arm64.iso" },
 
-    { "id": "TinyCore_15_i386",             "label": "TinyCore 15 — Intel/AMD 32-bit (i386)",                  "url": "http://tinycorelinux.net/15.x/x86/release/TinyCore-15.0.iso" }
+    { "id": "TinyCore_15_i386",             "label": "TinyCore 15 — Intel/AMD 32-bit (i386)",                  "url": "http://tinycorelinux.net/15.x/x86/release/TinyCore-15.0.iso" },
 
     { "id": "RaspberryPi_OS_Bookworm_Lite_arm64_2024_10_22", "label": "Raspberry Pi OS (Bookworm) Lite — Raspberry Pi 64-bit (arm64, .img.xz)", "url": "https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-10-22/2024-10-22-raspios-bookworm-arm64-lite.img.xz" },
     { "id": "RaspberryPi_OS_Bookworm_Lite_armhf_2024_10_22", "label": "Raspberry Pi OS (Bookworm) Lite — Raspberry Pi 32-bit (armhf, .img.xz)", "url": "https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2024-10-22/2024-10-22-raspios-bookworm-armhf-lite.img.xz" },
