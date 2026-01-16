@@ -2,7 +2,6 @@
   "download_dir": "~/Downloads/iso_images",
   "block_device_filter": "usb",
   "distros": [
-    
     { "id": "Ubuntu_24_04_3_desktop_amd64", "label": "Ubuntu 24.04.3 LTS Desktop — Intel/AMD 64-bit (amd64)", "url": "https://releases.ubuntu.com/24.04/ubuntu-24.04.3-desktop-amd64.iso" },
     { "id": "Ubuntu_24_04_3_server_amd64",  "label": "Ubuntu 24.04.3 LTS Server — Intel/AMD 64-bit (amd64)",  "url": "https://releases.ubuntu.com/24.04/ubuntu-24.04.3-live-server-amd64.iso" },
     { "id": "Ubuntu_24_04_3_server_arm64",  "label": "Ubuntu 24.04.3 LTS Server — ARM64 (aarch64)",          "url": "https://releases.ubuntu.com/24.04/ubuntu-24.04.3-live-server-arm64.iso" },
