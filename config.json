@@ -51,8 +51,6 @@
 
     { "id": "TinyCore_15_i386",             "label": "TinyCore 15 — Intel/AMD 32-bit (i386)",                  "url": "http://tinycorelinux.net/15.x/x86/release/TinyCore-15.0.iso" }
 
-    ,
-    
     { "id": "RaspberryPi_OS_Bookworm_Lite_arm64_2024_10_22", "label": "Raspberry Pi OS (Bookworm) Lite — Raspberry Pi 64-bit (arm64, .img.xz)", "url": "https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-10-22/2024-10-22-raspios-bookworm-arm64-lite.img.xz" },
     { "id": "RaspberryPi_OS_Bookworm_Lite_armhf_2024_10_22", "label": "Raspberry Pi OS (Bookworm) Lite — Raspberry Pi 32-bit (armhf, .img.xz)", "url": "https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2024-10-22/2024-10-22-raspios-bookworm-armhf-lite.img.xz" },
     { "id": "Ubuntu_24_04_3_preinstalled_raspi_arm64",        "label": "Ubuntu 24.04.3 Preinstalled Server — Raspberry Pi ARM64 (aarch64, .img.xz)", "url": "https://cdimage.ubuntu.com/releases/24.04.3/release/ubuntu-24.04.3-preinstalled-server-arm64+raspi.img.xz" },
