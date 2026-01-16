@@ -2,6 +2,9 @@ Isoforge
 
 Simple shell scripts for downloading popular Linux ISOs and burning them to a USB device using `dialog` for UI prompts.
 
+<img width="1111" height="606" alt="image" src="https://github.com/user-attachments/assets/5ea1e06b-feaf-4208-9c4b-80cbd99d1891" />
+
+
 Repository
 
 - GitHub (SSH): git@github.com:nikolareljin/burn-iso.git
@@ -191,14 +194,7 @@ Choose an action:
 
 Selecting an image from config
 
-```
-$ ./download
-[dialog] Select one or more distros to download
-  [ ] Ubuntu_24_04_amd64   Ubuntu 24.04 LTS (amd64)
-  [x] SystemRescue_amd64   SystemRescue 10.01 (amd64)
-  [ ] Fedora_amd64         Fedora Workstation 42 (x86_64)
-...
-```
+<img width="1063" height="626" alt="image" src="https://github.com/user-attachments/assets/63c48020-4cd1-4539-b767-2eac84366e54" />
 
 Flashing progress
 
