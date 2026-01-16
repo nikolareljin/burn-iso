@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,7 +46,13 @@ def main() -> None:
     header = parse_header(script)
     usage = header["usage"] or "isoforge [options]"
     description = header["description"] or "TUI for downloading and flashing ISOs to USB."
-    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    source_epoch = os.getenv("SOURCE_DATE_EPOCH")
+    if source_epoch and source_epoch.isdigit():
+        date = datetime.fromtimestamp(int(source_epoch), timezone.utc).strftime("%Y-%m-%d")
+    else:
+        date = datetime.fromtimestamp(
+            (repo_root / "VERSION").stat().st_mtime, timezone.utc
+        ).strftime("%Y-%m-%d")
 
     lines = [
         f'.TH ISOFORGE 1 "{date}" "isoforge {version}" "User Commands"',
