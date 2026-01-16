@@ -1,0 +1,14 @@
+Source: isoforge
+Section: utils
+Priority: optional
+Maintainer: Nikola Reljin <nikola.reljin@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: isoforge
+Architecture: all
+Depends: ${misc:Depends}, bash, dialog, curl | wget, jq, coreutils, util-linux
+Description: TUI tool for downloading and flashing ISO images to USB
+ Isoforge provides a simple terminal UI for selecting and downloading distros,
+ flashing to USB, and creating Ventoy multi-ISO drives.

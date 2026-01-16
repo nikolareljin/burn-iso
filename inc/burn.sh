@@ -5,9 +5,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Resolve repo root so script works whether run via root-level symlink or directly
-if [[ -d "$SCRIPT_DIR/scripts" && -f "$SCRIPT_DIR/config.json" ]]; then
+if [[ -d "$SCRIPT_DIR/scripts/script-helpers" && -f "$SCRIPT_DIR/config.json" ]]; then
   REPO_ROOT="$SCRIPT_DIR"
-elif [[ -f "$SCRIPT_DIR/../config.json" && -d "$SCRIPT_DIR/../scripts" ]]; then
+elif [[ -f "$SCRIPT_DIR/../config.json" && -d "$SCRIPT_DIR/../scripts/script-helpers" ]]; then
   REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 else
   REPO_ROOT="$SCRIPT_DIR"
@@ -23,6 +23,10 @@ fi
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging dialog file os deps
+
+# Always restore a clean terminal UI when exiting (including Cancel/interrupt)
+reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
+trap reset_tui EXIT INT TERM
 
 CONFIG_FILE="${CONFIG_FILE:-$REPO_ROOT/config.json}"
 

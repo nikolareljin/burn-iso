@@ -1,0 +1,56 @@
+name: Main
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deb:
+    uses: nikolareljin/ci-helpers/.github/workflows/deb-build.yml@production
+    with:
+      working_directory: "."
+      prebuild_command: "git submodule update --init --recursive && ./tools/gen-man.sh"
+      artifact_glob: "../*.deb"
+
+  ppa:
+    if: ${{ vars.PPA_PUBLISH_ENABLED == 'true' }}
+    uses: nikolareljin/ci-helpers/.github/workflows/ppa-deb.yml@production
+    with:
+      working_directory: "."
+      prebuild_command: "git submodule update --init --recursive && ./tools/gen-man.sh"
+      ppa_target: "ppa:your-launchpad-id/isoforge"
+      deb_fullname: "Nikola Reljin"
+      deb_email: "nikola.reljin@gmail.com"
+      signing_key_id: ${{ vars.PPA_GPG_KEY_ID }}
+    secrets:
+      gpg_private_key: ${{ secrets.PPA_GPG_PRIVATE_KEY }}
+      gpg_passphrase: ${{ secrets.PPA_GPG_PASSPHRASE }}
+      launchpad_ssh_private_key: ${{ secrets.PPA_SSH_PRIVATE_KEY }}
+
+  rpm:
+    uses: nikolareljin/ci-helpers/.github/workflows/rpm-build.yml@production
+    with:
+      working_directory: "."
+      prebuild_command: "git submodule update --init --recursive && ./tools/gen-man.sh"
+      spec_path: "packaging/isoforge.spec"
+      artifact_glob: "dist/*.rpm"
+
+  brew:
+    uses: nikolareljin/ci-helpers/.github/workflows/homebrew-package.yml@production
+    with:
+      working_directory: "."
+      prebuild_command: "git submodule update --init --recursive && ./tools/gen-man.sh"
+      name: "isoforge"
+      desc: "TUI tool for downloading and flashing ISO images to USB"
+      homepage: "https://github.com/nikolareljin/burn-iso"
+      deps: "dialog,jq,curl"
+      entrypoint: "inc/isoforge.sh"
+      man_path: "docs/man/isoforge.1"
+      use_libexec: "true"
+      env_var: "ISOFORGE_ROOT"
+      release_repo: "nikolareljin/burn-iso"
+      exclude_paths: ".git,.github,dist,.deps_install.log,.tmp_config.json,.mockbin,test_downloads"
+      publish: ${{ vars.HOMEBREW_PUBLISH_ENABLED }}
+      tap_repo: ${{ vars.HOMEBREW_TAP_REPO }}
+      tap_branch: ${{ vars.HOMEBREW_TAP_BRANCH }}
+    secrets:
+      tap_token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
