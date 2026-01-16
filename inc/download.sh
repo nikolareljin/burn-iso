@@ -138,6 +138,7 @@ distro_category() {
   echo "Desktop / Linux"
 }
 
+declare -A DISTROS
 declare -A URLS
 mapfile -t rows < <(jq -r '.distros[] | "\(.id)\t\(.label)\t\(.url)"' "$CONFIG_FILE")
 if [[ ${#rows[@]} -eq 0 ]]; then
@@ -149,6 +150,7 @@ items=()
 prev_cat=""
 for line in "${rows[@]}"; do
   id="${line%%$'\t'*}"; rest="${line#*$'\t'}"; label="${rest%%$'\t'*}"; url="${line##*$'\t'}"
+  DISTROS["$id"]="$label"
   URLS["$id"]="$url"
   cat=$(distro_category "$id" "$label")
   if [[ "$cat" != "$prev_cat" ]]; then

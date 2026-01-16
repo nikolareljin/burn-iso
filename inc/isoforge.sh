@@ -7,7 +7,6 @@
 #   --config PATH  Override config file path.
 #   --version      Print version and exit.
 #   -h, --help     Show help and exit.
-# ----------------------------------------------------
 set -euo pipefail
 
 # CLI Isoforge-like interface using dialog
