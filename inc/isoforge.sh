@@ -584,10 +584,10 @@ flash_with_ventoy() {
   fi
   local part mnt
   part=$(
-    lsblk -ln -b -o NAME,TYPE,SIZE,LABEL "/dev/$SELECTED_DEVICE" | awk '
+    lsblk -ln -b -o NAME,TYPE,SIZE,LABEL,FSTYPE "/dev/$SELECTED_DEVICE" | awk '
       $2=="part" {
-        name=$1; size=$3; label=$4;
-        if (label != "VTOYEFI" && size > best_size) {
+        name=$1; size=$3; label=$4; fstype=$5;
+        if (label != "VTOYEFI" && fstype != "vfat" && size > best_size) {
           best_size=size; best=name;
         }
         if (size > max_size) {
