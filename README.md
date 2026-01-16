@@ -30,15 +30,17 @@ Curated Distros (config.json)
 
 - I expanded `config.json` with a validated mix spanning:
   - Daily use: Ubuntu 24.04.3, Debian 13.1, Fedora 41, openSUSE Leap 15.6, Linux Mint 22, Arch (latest)
-  - Cybersecurity: Kali Linux (installer 2025.2)
-  - Cloning/backup: Rescuezilla 2.4.2
+  - Cybersecurity: Kali Linux (installer 2025.2), Parrot OS
+  - Cloning/backup: Rescuezilla 2.4.2, Clonezilla Live
   - Repair tools: SystemRescue 11.00, GParted Live, Hiren's BootCD PE
-  - Antivirus: Dr.Web LiveDisk
-  - 32-bit hardware: Debian 12.7 (i386), antiX 23 (386), TinyCore 15 (i386)
+  - 32-bit hardware: Debian 12.7 (i386), antiX 23 (i386), TinyCore 15 (i386)
   - Media/music production: Ubuntu Studio 24.04.3
+  - SBC/ARM images: Raspberry Pi OS, Ubuntu for Raspberry Pi, Armbian (Orange Pi, Banana Pi)
+  - Android/Tablet: Android-x86, Bliss OS, LineageOS, GrapheneOS (factory image)
+  - Surface/Xbox notes: Surface-friendly entries and Xbox notes as pointers
 
 - Every URL in `config.json` was checked for HTTP 200 and no 404s at the time of update.
-- Some projects (LibreELEC, OPNsense/pfSense, Raspberry Pi OS, Armbian, various photo-frame and magic mirror builds) typically distribute compressed images (`.img.xz`, `.iso.bz2`) or installers, not raw `.iso`. Those are not included here to avoid broken flashes. If you want, we can add support for auto‑decompressing images before flashing.
+- Compressed images like `.img.xz` and `.img.gz` are supported for direct flashing; the tool will stream-decompress before writing.
 
 Symlinked entrypoints
 
@@ -138,7 +140,7 @@ Packaging
   - Publish formula: `./tools/publish-homebrew.sh`
   - Install from tap: `brew install <tap>/isoforge`
 
-CI uses `ci-helpers` workflows for Debian builds and PPA uploads. See `docs/CI.md`.
+CI uses `ci-helpers` reusable workflows from the `production` branch for Debian, RPM, PPA, and Homebrew. See `docs/CI.md`.
 
 Publishing
 
