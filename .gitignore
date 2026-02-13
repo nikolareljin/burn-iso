@@ -29,3 +29,5 @@ debian/*.log
 *.swo
 .idea/
 .vscode/
+
+/ignore/
