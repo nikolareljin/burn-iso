@@ -99,6 +99,18 @@ Usage
   - Download from curated list (config.json): `./download`
   - Burn an ISO from your `download_dir` (or browse): `./burn`
 
+Where Files Are Downloaded
+
+- Default download location:
+  - `~/Downloads/iso_images`
+  - Expanded path on Linux: `/home/<your-user>/Downloads/iso_images`
+- This is controlled by `download_dir` in `config.json`.
+- If `download_dir` is missing or empty, scripts fall back to:
+  - `$HOME/Downloads/iso_images`
+- Quick check:
+  - `jq -r '.download_dir' config.json`
+  - `ls -lah ~/Downloads/iso_images`
+
 Multi-ISO with Ventoy
 
 - In `./isoforge`, you can now select multiple ISO files (from your `download_dir`).
@@ -216,6 +228,8 @@ Configuration
 
 - `config.json` controls the curated distro list and defaults:
   - `download_dir`: where downloads are saved (supports `~`).
+    - Default in this repo: `~/Downloads/iso_images`
+    - Runtime fallback if missing/empty: `$HOME/Downloads/iso_images`
   - `block_device_filter`: which drives to show; `usb` (default) or `any`.
   - `distros`: array of `{ id, label, url }` items used by the "download from list" option.
 
