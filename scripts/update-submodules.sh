@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # SCRIPT: update-submodules.sh
 # DESCRIPTION: Sync and initialize configured git submodules.
-# USAGE: ./scripts/update-submodules.sh [-h] [-r]
+# USAGE: ./update [-h] [-r]
 # PARAMETERS:
 # -h                : show help
 # -r                : update submodules to latest remote commit on configured branch
-# EXAMPLE: ./scripts/update-submodules.sh -r
+# EXAMPLE: ./update -r
 set -euo pipefail
 
 SCRIPT_SOURCE="${BASH_SOURCE[0]}"
@@ -18,12 +18,13 @@ while [ -h "$SCRIPT_SOURCE" ]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+SELF_CMD="./$(basename "$0")"
 
 usage() {
-    cat <<'USAGE'
+    cat <<USAGE
 Sync and initialize configured git submodules.
 
-Usage: ./scripts/update-submodules.sh [-h] [-r]
+Usage: ${SELF_CMD} [-h] [-r]
 
 Options:
   -h    Show help

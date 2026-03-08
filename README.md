@@ -86,7 +86,7 @@ Update Submodule (production)
   - `./update` (sync + init)
   - `./update -r` (sync + init + remote refresh)
 
-Note: The `scripts/script-helpers` submodule is already configured with an HTTPS URL in `.gitmodules`. If you need to override it locally, run `git config -f .gitmodules submodule.scripts/script-helpers.url https://github.com/nikolareljin/script-helpers.git && git submodule sync --recursive`.
+Note: The `scripts/script-helpers` submodule is already configured with an HTTPS URL in `.gitmodules`. If you need to override it locally (per-clone, without modifying `.gitmodules`), run `git config submodule.scripts/script-helpers.url https://github.com/nikolareljin/script-helpers.git && git submodule sync --recursive`.
 
 Install Dependencies
 

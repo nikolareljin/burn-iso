@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # SCRIPT: test.sh
 # DESCRIPTION: Run canonical repository validation checks.
-# USAGE: ./scripts/test.sh [-h] [--no-shellcheck]
+# USAGE: ./test [-h] [--no-shellcheck]
 # PARAMETERS:
 # -h                : show help
 # --no-shellcheck   : skip shellcheck validation
-# EXAMPLE: ./scripts/test.sh
+# EXAMPLE: ./test
 set -euo pipefail
 
 SCRIPT_SOURCE="${BASH_SOURCE[0]}"
@@ -18,12 +18,13 @@ while [ -h "$SCRIPT_SOURCE" ]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+SELF_CMD="./$(basename "$0")"
 
 usage() {
-    cat <<'USAGE'
+    cat <<USAGE
 Run canonical validation checks.
 
-Usage: ./scripts/test.sh [-h] [--no-shellcheck]
+Usage: ${SELF_CMD} [-h] [--no-shellcheck]
 
 Options:
   -h               Show help
@@ -53,7 +54,7 @@ fi
 
 if $run_shellcheck; then
     if ! command -v shellcheck >/dev/null 2>&1; then
-        echo "shellcheck not found. Install shellcheck or run ./scripts/test.sh --no-shellcheck" >&2
+        echo "shellcheck not found. Install shellcheck or run ${SELF_CMD} --no-shellcheck" >&2
         exit 1
     fi
     mapfile -t project_shell_files < <(find . \

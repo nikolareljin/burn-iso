@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # SCRIPT: build.sh
 # DESCRIPTION: Run packaging/build sanity checks for this repository.
-# USAGE: ./scripts/build.sh [-h] [--full]
+# USAGE: ./build [-h] [--full]
 # PARAMETERS:
 # -h                : show help
 # --full            : run full package builds (deb/rpm/homebrew tarball)
-# EXAMPLE: ./scripts/build.sh --full
+# EXAMPLE: ./build --full
 set -euo pipefail
 
 SCRIPT_SOURCE="${BASH_SOURCE[0]}"
@@ -18,12 +18,13 @@ while [ -h "$SCRIPT_SOURCE" ]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+SELF_CMD="./$(basename "$0")"
 
 usage() {
-    cat <<'USAGE'
+    cat <<USAGE
 Run packaging/build checks.
 
-Usage: ./scripts/build.sh [-h] [--full]
+Usage: ${SELF_CMD} [-h] [--full]
 
 Options:
   -h       Show help
