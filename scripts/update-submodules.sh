@@ -39,6 +39,12 @@ while getopts ":hr" opt; do
         \?) echo "Invalid option: -$OPTARG" >&2; usage; exit 1 ;;
     esac
 done
+shift $((OPTIND - 1))
+if [[ "$#" -gt 0 ]]; then
+    echo "Unexpected argument(s): $*" >&2
+    usage
+    exit 1
+fi
 
 if ! git -C "$ROOT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "error: $ROOT_DIR is not a git worktree" >&2
