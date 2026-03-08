@@ -49,6 +49,7 @@ for f in "${required_files[@]}"; do
 done
 
 mapfile -t project_shell_files < <(find . \
+    -path './.git' -prune -o \
     -path './scripts/script-helpers' -prune -o \
     -path './dist' -prune -o \
     -type f -name '*.sh' -print | sort)

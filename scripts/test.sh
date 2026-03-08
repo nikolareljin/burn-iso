@@ -57,6 +57,7 @@ if $run_shellcheck; then
         exit 1
     fi
     mapfile -t project_shell_files < <(find . \
+        -path './.git' -prune -o \
         -path './scripts/script-helpers' -prune -o \
         -path './dist' -prune -o \
         -type f -name '*.sh' -print | sort)

@@ -67,17 +67,15 @@ if [[ "${#configured_paths[@]}" -eq 0 ]]; then
 fi
 
 mapfile -t gitlink_paths < <(git -C "$ROOT_DIR" ls-files -s | awk '$1=="160000"{print $4}')
+declare -A gitlink_lookup=()
+for gitlink_path in "${gitlink_paths[@]}"; do
+    [[ -n "$gitlink_path" ]] || continue
+    gitlink_lookup["$gitlink_path"]=1
+done
 
 for path in "${configured_paths[@]}"; do
     [[ -n "$path" ]] || continue
-    found=0
-    for gitlink_path in "${gitlink_paths[@]}"; do
-        if [[ "$path" == "$gitlink_path" ]]; then
-            found=1
-            break
-        fi
-    done
-    if [[ "$found" -eq 0 ]]; then
+    if [[ -z "${gitlink_lookup[$path]:-}" ]]; then
         echo "warning: skipping stale .gitmodules entry not present in index: $path" >&2
         continue
     fi

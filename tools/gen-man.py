@@ -55,7 +55,7 @@ def compute_man_date(repo_root: Path) -> str:
         ).strip()
         if out:
             return out
-    except Exception:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         pass
 
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -103,6 +103,9 @@ def main() -> None:
             ".TP",
             ".I /usr/share/isoforge/config.json",
             "Default configuration when installed system-wide.",
+            ".TP",
+            ".I $HOME/Downloads/iso_images",
+            "Default download directory used when the \\fBdownload_dir\\fR configuration option is missing or empty.",
         ]
     )
 
