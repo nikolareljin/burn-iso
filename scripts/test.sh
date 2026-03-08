@@ -43,13 +43,13 @@ done
 
 cd "$ROOT_DIR"
 
+./scripts/build.sh
+
 if command -v jq >/dev/null 2>&1; then
     jq -e '.distros and (.distros | type == "array")' config.json >/dev/null
 else
     echo "warning: jq not available; skipping config schema check" >&2
 fi
-
-./scripts/build.sh
 
 if $run_shellcheck; then
     if ! command -v shellcheck >/dev/null 2>&1; then

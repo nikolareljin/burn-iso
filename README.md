@@ -47,8 +47,10 @@ Curated Distros (config.json)
 
 Symlinked entrypoints
 
-- The root now contains simple entrypoints without the `.sh` suffix: `./isoforge`, `./download`, `./burn`, `./setup`.
-- These are symlinks pointing to the actual scripts in `./inc/*.sh`.
+- The root now contains simple entrypoints without the `.sh` suffix:
+  `./isoforge`, `./download`, `./burn`, `./setup`, `./build`, `./test`, `./update`.
+- App flow entrypoints (`./isoforge`, `./download`, `./burn`, `./setup`) point to scripts in `./inc/*.sh`.
+- Helper entrypoints (`./build`, `./test`, `./update`) point to scripts in `./scripts/*.sh`.
 - This keeps the root clean and makes commands shorter to run.
 
 Isoforge for the CLI
@@ -60,8 +62,8 @@ Isoforge for the CLI
 
 Submodule Layout
 
-- Submodule `scripts/script-helpers` points to `git@github.com:nikolareljin/script-helpers.git` and provides common helpers (logging, dialog, deps, file, etc.).
-  - Tracks branch: `main`.
+- Submodule `scripts/script-helpers` points to `https://github.com/nikolareljin/script-helpers.git` and provides common helpers (logging, dialog, deps, file, etc.).
+  - Tracks branch: `production`.
 
 Clone With Submodules
 
@@ -75,16 +77,16 @@ Clone With Submodules
   - `git submodule sync --recursive`
   - `git submodule update --init --recursive`
 
-Update Submodule (main)
+Update Submodule (production)
 
-- Pull latest helper scripts from `main` and record the update:
+- Pull latest helper scripts from the configured branch (`production`) and record the update:
   - `git submodule update --remote --recursive`
-  - `git add scripts/script-helpers && git commit -m "Update script-helpers to latest main"`
+  - `git add scripts/script-helpers && git commit -m "Update script-helpers to latest production"`
 - Or use the local helper wrapper:
   - `./update` (sync + init)
   - `./update -r` (sync + init + remote refresh)
 
-Note: SSH access is required for the submodule URL `git@github.com:nikolareljin/script-helpers.git`. If needed, you can switch it to HTTPS using `git config -f .gitmodules submodule.scripts/script-helpers.url https://github.com/nikolareljin/script-helpers.git && git submodule sync --recursive`.
+Note: The `scripts/script-helpers` submodule is already configured with an HTTPS URL in `.gitmodules`. If you need to override it locally, run `git config -f .gitmodules submodule.scripts/script-helpers.url https://github.com/nikolareljin/script-helpers.git && git submodule sync --recursive`.
 
 Install Dependencies
 

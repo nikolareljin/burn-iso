@@ -50,7 +50,17 @@ if [[ ! -f "$ROOT_DIR/.gitmodules" ]]; then
     exit 0
 fi
 
-mapfile -t configured_paths < <(git -C "$ROOT_DIR" config -f .gitmodules --get-regexp '^submodule\..*\.path$' | awk '{print $2}')
+git_config_output="$(git -C "$ROOT_DIR" config -f .gitmodules --get-regexp '^submodule\..*\.path$' 2>&1)" || {
+    git_config_status=$?
+    if [[ "$git_config_status" -eq 1 ]]; then
+        echo "No configured submodules found in .gitmodules."
+        exit 0
+    fi
+    echo "error: failed to read submodule paths from .gitmodules:" >&2
+    echo "$git_config_output" >&2
+    exit "$git_config_status"
+}
+mapfile -t configured_paths < <(printf '%s\n' "$git_config_output" | awk '{print $2}')
 if [[ "${#configured_paths[@]}" -eq 0 ]]; then
     echo "No configured submodules found in .gitmodules."
     exit 0
