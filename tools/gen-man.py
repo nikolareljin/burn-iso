@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import re
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -37,6 +38,29 @@ def parse_header(script_path: Path) -> dict:
     return data
 
 
+def compute_man_date(repo_root: Path) -> str:
+    source_date_epoch = os.environ.get("SOURCE_DATE_EPOCH", "").strip()
+    if source_date_epoch:
+        try:
+            ts = int(source_date_epoch)
+            return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+
+    try:
+        out = subprocess.check_output(
+            ["git", "-C", str(repo_root), "log", "-1", "--format=%cs", "--", "VERSION"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        if out:
+            return out
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
 def main() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     script = repo_root / "inc" / "isoforge.sh"
@@ -46,7 +70,7 @@ def main() -> None:
     header = parse_header(script)
     usage = header["usage"] or "isoforge [options]"
     description = header["description"] or "TUI for downloading and flashing ISOs to USB."
-    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date = compute_man_date(repo_root)
 
     lines = [
         f'.TH ISOFORGE 1 "{date}" "isoforge {version}" "User Commands"',
@@ -79,6 +103,9 @@ def main() -> None:
             ".TP",
             ".I /usr/share/isoforge/config.json",
             "Default configuration when installed system-wide.",
+            ".TP",
+            ".I $HOME/Downloads/iso_images",
+            "Default download directory used when the \\fBdownload_dir\\fR configuration option is missing or empty.",
         ]
     )
 

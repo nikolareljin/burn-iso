@@ -1,4 +1,4 @@
-.TH ISOFORGE 1 "2026-01-16" "isoforge 1.0.0" "User Commands"
+.TH ISOFORGE 1 "2026-01-10" "isoforge 1.0.0" "User Commands"
 .SH NAME
 isoforge \- TUI for downloading and flashing ISOs to USB, including Ventoy multi-ISO.
 .SH SYNOPSIS
@@ -18,14 +18,5 @@ Print version and exit.
 .I /usr/share/isoforge/config.json
 Default configuration when installed system-wide.
 .TP
-.I ~/Downloads/iso_images
-Default download directory for ISO and image files (controlled by
-.B download_dir
-in
-.I config.json
-).
-.TP
 .I $HOME/Downloads/iso_images
-Runtime fallback download directory when
-.B download_dir
-is missing or empty.
+Default download directory used when the \fBdownload_dir\fR configuration option is missing or empty.
