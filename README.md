@@ -25,7 +25,7 @@ Important: Clone With Submodules
 
 Recent Changes
 
-- Root commands are short symlinks (`./isoforge`, `./download`, `./burn`, `./setup`).
+- Root commands are short symlinks (`./isoforge`, `./download`, `./burn`, `./setup`, `./build`, `./test`, `./update`).
 - Actual app scripts were moved from `./scripts/script-helpers/scripts/*.sh` to `./inc/*.sh`.
 - Scripts resolve the repo root at runtime so they work via symlinks or direct `bash ./inc/<name>.sh`.
 
@@ -80,6 +80,9 @@ Update Submodule (main)
 - Pull latest helper scripts from `main` and record the update:
   - `git submodule update --remote --recursive`
   - `git add scripts/script-helpers && git commit -m "Update script-helpers to latest main"`
+- Or use the local helper wrapper:
+  - `./update` (sync + init)
+  - `./update -r` (sync + init + remote refresh)
 
 Note: SSH access is required for the submodule URL `git@github.com:nikolareljin/script-helpers.git`. If needed, you can switch it to HTTPS using `git config -f .gitmodules submodule.scripts/script-helpers.url https://github.com/nikolareljin/script-helpers.git && git submodule sync --recursive`.
 
@@ -89,6 +92,15 @@ Install Dependencies
   - `./setup`
   - Optionally, pass additional packages: `./setup <pkg1> <pkg2> ...`
   - The scripts also attempt to auto-install missing dependencies at runtime using the script-helpers `deps` module.
+
+Local Quality Helpers
+
+- Run packaging/build sanity checks:
+  - `./build`
+  - `./build --full` (runs full package builds)
+- Run canonical local validation:
+  - `./test`
+  - `./test --no-shellcheck`
 
 Usage
 
@@ -185,6 +197,9 @@ lrwxrwxrwx 1 user user   14 Nov  2  isoforge -> inc/isoforge.sh
 lrwxrwxrwx 1 user user   15 Nov  2  download -> inc/download.sh
 lrwxrwxrwx 1 user user   11 Nov  2  burn     -> inc/burn.sh
 lrwxrwxrwx 1 user user   12 Nov  2  setup    -> inc/setup.sh
+lrwxrwxrwx 1 user user   16 Mar  8  build    -> scripts/build.sh
+lrwxrwxrwx 1 user user   15 Mar  8  test     -> scripts/test.sh
+lrwxrwxrwx 1 user user   29 Mar  8  update   -> scripts/update-submodules.sh
 drwxr-xr-x 2 user user 4096 Nov  2  inc/
 drwxr-xr-x 5 user user 4096 Nov  2  scripts/   # local scripts
 drwxr-xr-x 5 user user 4096 Nov  2  scripts/script-helpers   # helper submodule

@@ -31,3 +31,6 @@ debian/*.log
 .vscode/
 
 /ignore/
+
+# Local notes
+TODO.txt

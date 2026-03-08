@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning when applicable.
 
+## 2026-03-08
+
+### Tooling
+- Added canonical helper entrypoints:
+  - `./build` -> `scripts/build.sh`
+  - `./test` -> `scripts/test.sh`
+  - `./update` -> `scripts/update-submodules.sh`
+- Added build/test/update helper scripts with strict shell settings and reproducible local workflows.
+- `scripts/update-submodules.sh` now supports `-r` for remote submodule refresh mode.
+
 ## 2026-01-09
 
 ### Breaking
