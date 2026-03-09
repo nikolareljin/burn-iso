@@ -257,7 +257,7 @@ select_images_from_config_multi() {
   popd >/dev/null
   if (( errs > 0 )); then
     dialog --title "Download completed with warnings" --msgbox \
-      "Some selected downloads failed (${errs}).\nOnly successfully downloaded files were kept in the selection." 9 72
+      "Some selected items could not be processed (${errs}).\nThis may be due to missing URLs in the config or download failures.\nOnly successfully downloaded files were kept in the selection." 11 72
   fi
   if [[ ${#SELECTED_IMAGES[@]} -eq 1 ]]; then
     SELECTED_IMAGE="${SELECTED_IMAGES[0]}"
