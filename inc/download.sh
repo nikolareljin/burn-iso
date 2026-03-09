@@ -37,15 +37,22 @@ require_tool() {
   fi
 }
 
-is_secure_download_url() {
+is_http_override_enabled() {
+  [[ "${ALLOW_INSECURE_HTTP_DOWNLOADS:-0}" == "1" ]]
+}
+
+is_allowed_download_url() {
   local url="$1"
   if [[ "$url" == https://* ]]; then
     return 0
   fi
   if [[ "$url" == http://* ]]; then
+    if ! is_http_override_enabled; then
+      return 1
+    fi
     if [[ -z "${HTTP_DOWNLOAD_WARNING_SHOWN:-}" ]]; then
       HTTP_DOWNLOAD_WARNING_SHOWN=1
-      >&2 printf "Warning: Using insecure HTTP download URL(s). Consider updating config.json to HTTPS sources.\n"
+      >&2 printf "Warning: ALLOW_INSECURE_HTTP_DOWNLOADS=1 set; using insecure HTTP download URL(s).\n"
     fi
     return 0
   fi
@@ -143,8 +150,12 @@ for id in $selected; do
   if [[ -z "$url" || "$url" == "null" ]]; then
     print_error "No URL for $id in config.json"; errors=$((errors+1)); continue
   fi
-  if ! is_secure_download_url "$url"; then
-    print_error "Skipping $id due to insecure URL scheme (https required): $url"
+  if ! is_allowed_download_url "$url"; then
+    if [[ "$url" == http://* ]]; then
+      print_error "Skipping $id due to insecure HTTP URL (set ALLOW_INSECURE_HTTP_DOWNLOADS=1 to override): $url"
+    else
+      print_error "Skipping $id due to unsupported URL scheme (http/https required): $url"
+    fi
     errors=$((errors+1))
     continue
   fi

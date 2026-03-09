@@ -82,9 +82,20 @@ require_tool() {
   fi
 }
 
-is_secure_download_url() {
+is_http_override_enabled() {
+  [[ "${ALLOW_INSECURE_HTTP_DOWNLOADS:-0}" == "1" ]]
+}
+
+is_allowed_download_url() {
   local url="$1"
-  [[ "$url" == https://* || "$url" == http://* ]]
+  if [[ "$url" == https://* ]]; then
+    return 0
+  fi
+  if [[ "$url" == http://* ]]; then
+    is_http_override_enabled
+    return
+  fi
+  return 1
 }
 
 load_config() {
@@ -249,8 +260,8 @@ select_images_from_config_multi() {
 
   pushd "$DOWNLOAD_DIR" >/dev/null
   SELECTED_IMAGES=()
-  local allow_insecure_http=""
   local -a skipped_insecure=()
+  local -a skipped_unsupported=()
   local id url output path errs=0
   for id in $chosen; do
     [[ "$id" == hdr_* ]] && continue
@@ -258,23 +269,13 @@ select_images_from_config_multi() {
     [[ -z "$url" || "$url" == "null" ]] && { errs=$((errs+1)); continue; }
     if [[ "$url" != https://* && "$url" != http://* ]]; then
       errs=$((errs+1))
+      skipped_unsupported+=("$id")
       continue
     fi
-    if [[ "$url" == http://* ]]; then
-      if [[ -z "$allow_insecure_http" ]]; then
-        dialog --title "Insecure URL Warning" --yesno \
-          "One or more selected distros use insecure HTTP URLs.\nProceed with insecure downloads?" 8 72
-        if [[ $? -eq 0 ]]; then
-          allow_insecure_http="yes"
-        else
-          allow_insecure_http="no"
-        fi
-      fi
-      if [[ "$allow_insecure_http" != "yes" ]]; then
-        errs=$((errs+1))
-        skipped_insecure+=("$id")
-        continue
-      fi
+    if ! is_allowed_download_url "$url"; then
+      errs=$((errs+1))
+      skipped_insecure+=("$id")
+      continue
     fi
     output=$(basename "$url")
     if [[ "$output" != *.* ]]; then
@@ -291,10 +292,14 @@ select_images_from_config_multi() {
   if (( errs > 0 )); then
     local detail=""
     if [[ ${#skipped_insecure[@]} -gt 0 ]]; then
-      detail="\nSkipped insecure (HTTP) selections: ${skipped_insecure[*]}"
+      detail="${detail}\nSkipped insecure (HTTP) selections: ${skipped_insecure[*]}"
+      detail="${detail}\nHint: set ALLOW_INSECURE_HTTP_DOWNLOADS=1 only if you explicitly accept insecure downloads."
+    fi
+    if [[ ${#skipped_unsupported[@]} -gt 0 ]]; then
+      detail="${detail}\nSkipped unsupported URL selections: ${skipped_unsupported[*]}"
     fi
     dialog --title "Download completed with warnings" --msgbox \
-      "Some selected items could not be processed (${errs}).\nThis may be due to missing URLs, unsupported URL schemes, insecure URL rejection, or download failures.\nOnly successfully downloaded files were kept in the selection.${detail}" 12 74
+      "Some selected items could not be processed (${errs}).\nThis may be due to missing URLs, unsupported URL schemes, insecure URL rejection, or download failures.\nOnly successfully downloaded files were kept in the selection.${detail}" 14 74
   fi
   if [[ ${#SELECTED_IMAGES[@]} -eq 1 ]]; then
     SELECTED_IMAGE="${SELECTED_IMAGES[0]}"
@@ -397,17 +402,9 @@ select_image_from_config() {
       "The selected distro uses an unsupported URL scheme.\nPlease update config.json to use https:// or http://." 8 72
     return 1
   fi
-  if [[ "$url" == http://* ]]; then
-    dialog --title "Insecure URL Warning" --yesno \
-      "The selected distro uses an insecure HTTP URL.\nProceed with download?" 7 72
-    if [[ $? -ne 0 ]]; then
-      dialog --title "Download canceled" --msgbox "Download canceled due to insecure HTTP URL." 6 60
-      return 1
-    fi
-  fi
-  if ! is_secure_download_url "$url"; then
-    dialog --title "Unsupported URL" --msgbox \
-      "The selected distro URL is unsupported." 6 50
+  if ! is_allowed_download_url "$url"; then
+    dialog --title "Insecure URL blocked" --msgbox \
+      "The selected distro uses an insecure HTTP URL and was blocked by default.\nSet ALLOW_INSECURE_HTTP_DOWNLOADS=1 only if you explicitly accept insecure downloads." 9 74
     return 1
   fi
 
