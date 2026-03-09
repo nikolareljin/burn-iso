@@ -11,7 +11,7 @@ elif [[ -f "$SCRIPT_DIR/../config.json" && -d "$SCRIPT_DIR/../scripts/script-hel
 else
   REPO_ROOT="$SCRIPT_DIR"
 fi
-SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts}"
+SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts/script-helpers}"
 
 if [[ ! -f "$SCRIPT_HELPERS_DIR/helpers.sh" ]]; then
   >&2 printf "Missing required helper library: %s\n" "$SCRIPT_HELPERS_DIR/helpers.sh"
@@ -35,6 +35,38 @@ require_tool() {
     print_error "$t is required but not installed. Run ./setup.sh."
     exit 1
   fi
+}
+
+is_http_override_enabled() {
+  [[ "${ALLOW_INSECURE_HTTP_DOWNLOADS:-0}" == "1" ]]
+}
+
+show_http_override_warning_once() {
+  if [[ -n "${HTTP_DOWNLOAD_WARNING_SHOWN:-}" ]]; then
+    return 0
+  fi
+  HTTP_DOWNLOAD_WARNING_SHOWN=1
+  if command -v dialog >/dev/null 2>&1; then
+    dialog --title "Insecure HTTP Override Enabled" --msgbox \
+      "ALLOW_INSECURE_HTTP_DOWNLOADS=1 is set.\nThis allows insecure HTTP downloads and is not recommended." 8 72
+  else
+    >&2 printf "Warning: ALLOW_INSECURE_HTTP_DOWNLOADS=1 set; using insecure HTTP download URL(s).\n"
+  fi
+}
+
+is_allowed_download_url() {
+  local url="$1"
+  if [[ "$url" == https://* ]]; then
+    return 0
+  fi
+  if [[ "$url" == http://* ]]; then
+    if ! is_http_override_enabled; then
+      return 1
+    fi
+    show_http_override_warning_once
+    return 0
+  fi
+  return 1
 }
 
 # Resolve download dir and read distros from config.json
@@ -66,55 +98,6 @@ ensure_deps() {
     print_info "Installing missing dependencies: ${pkgs[*]}"
     install_dependencies "${pkgs[@]}"
   fi
-}
-
-# Download with a dialog gauge progress bar
-download_with_progress() {
-  local url="$1"; shift
-  local output="$1"; shift
-  local label="${1:-$output}"
-  local total_bytes=0
-  local cl
-  cl=$(curl -sI -L "$url" | awk 'tolower($1)=="content-length:"{print $2}' | tail -1 | tr -d '\r') || true
-  [[ -n "$cl" && "$cl" =~ ^[0-9]+$ ]] && total_bytes=$cl || total_bytes=0
-
-  local errfile
-  errfile=$(mktemp "/tmp/isoforge-download.XXXXXX.log")
-  (
-    set +e
-    if command -v curl >/dev/null 2>&1; then
-      curl -L --fail -sS -o "$output" "$url" >"$errfile" 2>&1 &
-      pid=$!
-    else
-      wget -q -O "$output" "$url" >"$errfile" 2>&1 &
-      pid=$!
-    fi
-    while kill -0 "$pid" 2>/dev/null; do
-      local size=0 pct=0
-      size=$(stat -c %s "$output" 2>/dev/null || echo 0)
-      if (( total_bytes > 0 )); then
-        pct=$(( size * 100 / total_bytes ))
-        (( pct > 99 )) && pct=99
-      else
-        pct=0
-      fi
-      echo "XXX"; echo "$pct"; printf "Downloading: %s\n(%s/%s bytes)\n" "$label" "$size" "${total_bytes:-unknown}"; echo "XXX"
-      sleep 0.3
-    done
-    wait "$pid"; status=$?
-    echo "$status" >"$REPO_ROOT/.dl_status.tmp"
-    echo "XXX"; echo 100; echo "Finalizing..."; echo "XXX"
-  ) | dialog --title "Downloading" --gauge "Starting..." 10 "$DIALOG_WIDTH" 0
-
-  local status; status=$(cat "$REPO_ROOT/.dl_status.tmp" 2>/dev/null || echo 1)
-  rm -f "$REPO_ROOT/.dl_status.tmp"
-  if [[ "$status" -ne 0 ]]; then
-    dialog --title "Download failed" --msgbox \
-      "Download failed. See log:\n$errfile" 10 60
-  else
-    rm -f "$errfile"
-  fi
-  return "$status"
 }
 
 ensure_deps
@@ -174,16 +157,24 @@ for id in $selected; do
   # Skip category headers if user selected them
   if [[ "$id" == hdr_* ]]; then continue; fi
   url="${URLS[$id]:-}"
-  label="${DISTROS[$id]:-}" # human-friendly name for the gauge
   if [[ -z "$url" || "$url" == "null" ]]; then
     print_error "No URL for $id in config.json"; errors=$((errors+1)); continue
+  fi
+  if ! is_allowed_download_url "$url"; then
+    if [[ "$url" == http://* ]]; then
+      print_error "Skipping $id due to insecure HTTP URL (set ALLOW_INSECURE_HTTP_DOWNLOADS=1 to override): $url"
+    else
+      print_error "Skipping $id due to unsupported URL scheme (http/https required): $url"
+    fi
+    errors=$((errors+1))
+    continue
   fi
   output=$(basename "$url")
   if [[ "$output" != *.* ]]; then
     output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
   fi
-  # Do not print extra lines while downloading; rely on dialog gauge only.
-  if ! download_with_progress "$url" "$output" "$label"; then
+  # Script-helpers handles dialog progress + failure details.
+  if ! download_file "$url" "$output"; then
     print_error "Failed to download $id"
     errors=$((errors+1))
   fi

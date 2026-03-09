@@ -225,6 +225,8 @@ Selecting an image from config
 
 <img width="1063" height="626" alt="image" src="https://github.com/user-attachments/assets/63c48020-4cd1-4539-b767-2eac84366e54" />
 
+Download progress uses the shared `script-helpers` flow (`download_file` with dialog-backed gauge/error handling).
+
 Flashing progress
 
 ```
@@ -240,6 +242,7 @@ Flashing to /dev/sdb
 Environment Overrides
 
 - Set `SCRIPT_HELPERS_DIR` to point to a custom helpers location if not using the `scripts/script-helpers` submodule path.
+- Downloads require `https://` by default. To explicitly allow insecure `http://` sources, set `ALLOW_INSECURE_HTTP_DOWNLOADS=1` (not recommended).
 
 Configuration
 
