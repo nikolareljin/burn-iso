@@ -84,7 +84,7 @@ require_tool() {
 
 is_secure_download_url() {
   local url="$1"
-  [[ "$url" == https://* ]]
+  [[ "$url" == https://* || "$url" == http://* ]]
 }
 
 load_config() {
@@ -249,14 +249,32 @@ select_images_from_config_multi() {
 
   pushd "$DOWNLOAD_DIR" >/dev/null
   SELECTED_IMAGES=()
+  local allow_insecure_http=""
+  local -a skipped_insecure=()
   local id url output path errs=0
   for id in $chosen; do
     [[ "$id" == hdr_* ]] && continue
     url=$(jq -r --arg id "$id" '.distros[] | select(.id==$id) | .url' "$CONFIG_FILE")
     [[ -z "$url" || "$url" == "null" ]] && { errs=$((errs+1)); continue; }
-    if ! is_secure_download_url "$url"; then
+    if [[ "$url" != https://* && "$url" != http://* ]]; then
       errs=$((errs+1))
       continue
+    fi
+    if [[ "$url" == http://* ]]; then
+      if [[ -z "$allow_insecure_http" ]]; then
+        dialog --title "Insecure URL Warning" --yesno \
+          "One or more selected distros use insecure HTTP URLs.\nProceed with insecure downloads?" 8 72
+        if [[ $? -eq 0 ]]; then
+          allow_insecure_http="yes"
+        else
+          allow_insecure_http="no"
+        fi
+      fi
+      if [[ "$allow_insecure_http" != "yes" ]]; then
+        errs=$((errs+1))
+        skipped_insecure+=("$id")
+        continue
+      fi
     fi
     output=$(basename "$url")
     if [[ "$output" != *.* ]]; then
@@ -271,8 +289,12 @@ select_images_from_config_multi() {
   done
   popd >/dev/null
   if (( errs > 0 )); then
+    local detail=""
+    if [[ ${#skipped_insecure[@]} -gt 0 ]]; then
+      detail="\nSkipped insecure (HTTP) selections: ${skipped_insecure[*]}"
+    fi
     dialog --title "Download completed with warnings" --msgbox \
-      "Some selected items could not be processed (${errs}).\nThis may be due to missing or insecure URLs in the config, or download failures.\nOnly successfully downloaded files were kept in the selection." 11 72
+      "Some selected items could not be processed (${errs}).\nThis may be due to missing URLs, unsupported URL schemes, insecure URL rejection, or download failures.\nOnly successfully downloaded files were kept in the selection.${detail}" 12 74
   fi
   if [[ ${#SELECTED_IMAGES[@]} -eq 1 ]]; then
     SELECTED_IMAGE="${SELECTED_IMAGES[0]}"
@@ -370,9 +392,22 @@ select_image_from_config() {
     dialog --title "Error" --msgbox "No URL found for selected distro." 8 50
     return 1
   fi
+  if [[ "$url" != https://* && "$url" != http://* ]]; then
+    dialog --title "Unsupported URL" --msgbox \
+      "The selected distro uses an unsupported URL scheme.\nPlease update config.json to use https:// or http://." 8 72
+    return 1
+  fi
+  if [[ "$url" == http://* ]]; then
+    dialog --title "Insecure URL Warning" --yesno \
+      "The selected distro uses an insecure HTTP URL.\nProceed with download?" 7 72
+    if [[ $? -ne 0 ]]; then
+      dialog --title "Download canceled" --msgbox "Download canceled due to insecure HTTP URL." 6 60
+      return 1
+    fi
+  fi
   if ! is_secure_download_url "$url"; then
-    dialog --title "Insecure URL blocked" --msgbox \
-      "The selected distro uses a non-HTTPS URL and was blocked for safety.\nPlease update config.json to use an https:// source." 9 72
+    dialog --title "Unsupported URL" --msgbox \
+      "The selected distro URL is unsupported." 6 50
     return 1
   fi
 

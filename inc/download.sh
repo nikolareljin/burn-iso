@@ -39,7 +39,17 @@ require_tool() {
 
 is_secure_download_url() {
   local url="$1"
-  [[ "$url" == https://* ]]
+  if [[ "$url" == https://* ]]; then
+    return 0
+  fi
+  if [[ "$url" == http://* ]]; then
+    if [[ -z "${HTTP_DOWNLOAD_WARNING_SHOWN:-}" ]]; then
+      HTTP_DOWNLOAD_WARNING_SHOWN=1
+      >&2 printf "Warning: Using insecure HTTP download URL(s). Consider updating config.json to HTTPS sources.\n"
+    fi
+    return 0
+  fi
+  return 1
 }
 
 # Resolve download dir and read distros from config.json
