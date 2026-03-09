@@ -82,6 +82,11 @@ require_tool() {
   fi
 }
 
+is_secure_download_url() {
+  local url="$1"
+  [[ "$url" == https://* ]]
+}
+
 load_config() {
   if [[ ! -f "$CONFIG_FILE" ]]; then
     print_error "Config file not found: $CONFIG_FILE"
@@ -249,6 +254,10 @@ select_images_from_config_multi() {
     [[ "$id" == hdr_* ]] && continue
     url=$(jq -r --arg id "$id" '.distros[] | select(.id==$id) | .url' "$CONFIG_FILE")
     [[ -z "$url" || "$url" == "null" ]] && { errs=$((errs+1)); continue; }
+    if ! is_secure_download_url "$url"; then
+      errs=$((errs+1))
+      continue
+    fi
     output=$(basename "$url")
     if [[ "$output" != *.* ]]; then
       output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
@@ -263,7 +272,7 @@ select_images_from_config_multi() {
   popd >/dev/null
   if (( errs > 0 )); then
     dialog --title "Download completed with warnings" --msgbox \
-      "Some selected items could not be processed (${errs}).\nThis may be due to missing URLs in the config or download failures.\nOnly successfully downloaded files were kept in the selection." 11 72
+      "Some selected items could not be processed (${errs}).\nThis may be due to missing or insecure URLs in the config, or download failures.\nOnly successfully downloaded files were kept in the selection." 11 72
   fi
   if [[ ${#SELECTED_IMAGES[@]} -eq 1 ]]; then
     SELECTED_IMAGE="${SELECTED_IMAGES[0]}"
@@ -359,6 +368,11 @@ select_image_from_config() {
   url=$(jq -r --arg id "$chosen" '.distros[] | select(.id==$id) | .url' "$CONFIG_FILE")
   if [[ -z "$url" || "$url" == "null" ]]; then
     dialog --title "Error" --msgbox "No URL found for selected distro." 8 50
+    return 1
+  fi
+  if ! is_secure_download_url "$url"; then
+    dialog --title "Insecure URL blocked" --msgbox \
+      "The selected distro uses a non-HTTPS URL and was blocked for safety.\nPlease update config.json to use an https:// source." 9 72
     return 1
   fi
 

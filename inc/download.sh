@@ -37,6 +37,11 @@ require_tool() {
   fi
 }
 
+is_secure_download_url() {
+  local url="$1"
+  [[ "$url" == https://* ]]
+}
+
 # Resolve download dir and read distros from config.json
 load_config() {
   if [[ ! -f "$CONFIG_FILE" ]]; then
@@ -127,6 +132,11 @@ for id in $selected; do
   url="${URLS[$id]:-}"
   if [[ -z "$url" || "$url" == "null" ]]; then
     print_error "No URL for $id in config.json"; errors=$((errors+1)); continue
+  fi
+  if ! is_secure_download_url "$url"; then
+    print_error "Skipping $id due to insecure URL scheme (https required): $url"
+    errors=$((errors+1))
+    continue
   fi
   output=$(basename "$url")
   if [[ "$output" != *.* ]]; then
