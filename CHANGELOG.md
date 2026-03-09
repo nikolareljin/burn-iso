@@ -8,7 +8,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ### Downloads
 - Refactored download flows in `inc/isoforge.sh` and `inc/download.sh` to use script-helpers download methods (`download_file`/dialog-backed progress) instead of duplicated in-repo gauge implementations.
-- Aligned `inc/download.sh` helper path default to `scripts/script-helpers` for consistency with the rest of the project.
+- Aligned `inc/download.sh` helper path default to `scripts/script-helpers` to match the script-helpers layout.
 
 ### Tooling
 - Added canonical helper entrypoints:
