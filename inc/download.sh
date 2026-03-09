@@ -41,6 +41,19 @@ is_http_override_enabled() {
   [[ "${ALLOW_INSECURE_HTTP_DOWNLOADS:-0}" == "1" ]]
 }
 
+show_http_override_warning_once() {
+  if [[ -n "${HTTP_DOWNLOAD_WARNING_SHOWN:-}" ]]; then
+    return 0
+  fi
+  HTTP_DOWNLOAD_WARNING_SHOWN=1
+  if command -v dialog >/dev/null 2>&1; then
+    dialog --title "Insecure HTTP Override Enabled" --msgbox \
+      "ALLOW_INSECURE_HTTP_DOWNLOADS=1 is set.\nThis allows insecure HTTP downloads and is not recommended." 8 72
+  else
+    >&2 printf "Warning: ALLOW_INSECURE_HTTP_DOWNLOADS=1 set; using insecure HTTP download URL(s).\n"
+  fi
+}
+
 is_allowed_download_url() {
   local url="$1"
   if [[ "$url" == https://* ]]; then
@@ -50,10 +63,7 @@ is_allowed_download_url() {
     if ! is_http_override_enabled; then
       return 1
     fi
-    if [[ -z "${HTTP_DOWNLOAD_WARNING_SHOWN:-}" ]]; then
-      HTTP_DOWNLOAD_WARNING_SHOWN=1
-      >&2 printf "Warning: ALLOW_INSECURE_HTTP_DOWNLOADS=1 set; using insecure HTTP download URL(s).\n"
-    fi
+    show_http_override_warning_once
     return 0
   fi
   return 1

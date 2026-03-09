@@ -242,6 +242,7 @@ Flashing to /dev/sdb
 Environment Overrides
 
 - Set `SCRIPT_HELPERS_DIR` to point to a custom helpers location if not using the `scripts/script-helpers` submodule path.
+- Downloads require `https://` by default. To explicitly allow insecure `http://` sources, set `ALLOW_INSECURE_HTTP_DOWNLOADS=1` (not recommended).
 
 Configuration
 
