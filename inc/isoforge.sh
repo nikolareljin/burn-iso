@@ -171,55 +171,6 @@ ensure_dialog() {
   }
 }
 
-# Download with a dialog gauge progress bar
-download_with_progress() {
-  local url="$1"; shift
-  local output="$1"; shift
-  local label="${1:-$output}"
-  local total_bytes=0
-  local cl
-  cl=$(curl -sI -L "$url" | awk 'tolower($1)=="content-length:"{print $2}' | tail -1 | tr -d '\r') || true
-  [[ -n "$cl" && "$cl" =~ ^[0-9]+$ ]] && total_bytes=$cl || total_bytes=0
-
-  local errfile
-  errfile=$(mktemp "/tmp/isoforge-download.XXXXXX.log")
-  (
-    set +e
-    if command -v curl >/dev/null 2>&1; then
-      curl -L --fail -sS -o "$output" "$url" >"$errfile" 2>&1 &
-      pid=$!
-    else
-      wget -q -O "$output" "$url" >"$errfile" 2>&1 &
-      pid=$!
-    fi
-    while kill -0 "$pid" 2>/dev/null; do
-      local size=0 pct=0
-      size=$(stat -c %s "$output" 2>/dev/null || echo 0)
-      if (( total_bytes > 0 )); then
-        pct=$(( size * 100 / total_bytes ))
-        (( pct > 99 )) && pct=99
-      else
-        pct=0
-      fi
-      echo "XXX"; echo "$pct"; printf "Downloading: %s\n(%s/%s bytes)\n" "$label" "$size" "${total_bytes:-unknown}"; echo "XXX"
-      sleep 0.3
-    done
-    wait "$pid"; status=$?
-    echo "$status" >"$REPO_ROOT/.dl_status.tmp"
-    echo "XXX"; echo 100; echo "Finalizing..."; echo "XXX"
-  ) | dialog --title "Downloading" --gauge "Starting..." 10 "$DIALOG_WIDTH" 0
-
-  local status; status=$(cat "$REPO_ROOT/.dl_status.tmp" 2>/dev/null || echo 1)
-  rm -f "$REPO_ROOT/.dl_status.tmp"
-  if [[ "$status" -ne 0 ]]; then
-    dialog --title "Download failed" --msgbox \
-      "Download failed. See log:\n$errfile" 10 60
-  else
-    rm -f "$errfile"
-  fi
-  return "$status"
-}
-
 title() { echo "Isoforge (CLI) — burn-iso"; }
 
 show_summary() {
@@ -287,19 +238,18 @@ select_images_from_config_multi() {
 
   pushd "$DOWNLOAD_DIR" >/dev/null
   SELECTED_IMAGES=()
-  local id url output path label errs=0
+  local id url output path errs=0
   for id in $chosen; do
     [[ "$id" == hdr_* ]] && continue
     url=$(jq -r --arg id "$id" '.distros[] | select(.id==$id) | .url' "$CONFIG_FILE")
-    label=$(jq -r --arg id "$id" '.distros[] | select(.id==$id) | .label' "$CONFIG_FILE")
     [[ -z "$url" || "$url" == "null" ]] && { errs=$((errs+1)); continue; }
     output=$(basename "$url")
     if [[ "$output" != *.* ]]; then
       output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
     fi
     if [[ ! -f "$output" ]]; then
-      # No extra prints; show only dialog during download
-      download_with_progress "$url" "$output" "${label:-$output}" || errs=$((errs+1))
+      # Script-helpers handles dialog progress + failure details.
+      download_file "$url" "$output" || errs=$((errs+1))
     fi
     path="$DOWNLOAD_DIR/$output"
     if [[ -f "$path" ]]; then SELECTED_IMAGES+=("$path"); fi
@@ -395,9 +345,8 @@ select_image_from_config() {
     break
   done
 
-  local url output path label
+  local url output path
   url=$(jq -r --arg id "$chosen" '.distros[] | select(.id==$id) | .url' "$CONFIG_FILE")
-  label=$(jq -r --arg id "$chosen" '.distros[] | select(.id==$id) | .label' "$CONFIG_FILE")
   if [[ -z "$url" || "$url" == "null" ]]; then
     dialog --title "Error" --msgbox "No URL found for selected distro." 8 50
     return 1
@@ -410,8 +359,8 @@ select_image_from_config() {
     output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
   fi
 
-  # Avoid extra stdout noise during the dialog gauge
-  if ! download_with_progress "$url" "$output" "${label:-$output}"; then
+  # Script-helpers handles dialog progress + failure details.
+  if ! download_file "$url" "$output"; then
     popd >/dev/null
     dialog --title "Error" --msgbox "Download failed for: $output" 8 50
     return 1

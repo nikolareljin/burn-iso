@@ -225,6 +225,8 @@ Selecting an image from config
 
 <img width="1063" height="626" alt="image" src="https://github.com/user-attachments/assets/63c48020-4cd1-4539-b767-2eac84366e54" />
 
+Download progress uses the shared `script-helpers` flow (`download_file` with dialog-backed gauge/error handling).
+
 Flashing progress
 
 ```
