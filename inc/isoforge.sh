@@ -255,6 +255,10 @@ select_images_from_config_multi() {
     if [[ -f "$path" ]]; then SELECTED_IMAGES+=("$path"); fi
   done
   popd >/dev/null
+  if (( errs > 0 )); then
+    dialog --title "Download completed with warnings" --msgbox \
+      "Some selected downloads failed (${errs}).\nOnly successfully downloaded files were kept in the selection." 9 72
+  fi
   if [[ ${#SELECTED_IMAGES[@]} -eq 1 ]]; then
     SELECTED_IMAGE="${SELECTED_IMAGES[0]}"
   elif [[ ${#SELECTED_IMAGES[@]} -gt 1 ]]; then
