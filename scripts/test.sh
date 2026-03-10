@@ -45,6 +45,7 @@ done
 cd "$ROOT_DIR"
 
 ./scripts/build.sh
+./scripts/test-cancel-flow.sh
 
 if command -v jq >/dev/null 2>&1; then
     jq -e '.distros and (.distros | type == "array")' config.json >/dev/null

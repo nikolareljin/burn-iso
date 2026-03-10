@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+(
+  cd "$ROOT_DIR"
+  export ISOFORGE_DISABLE_EXIT_TRAP=1
+  source ./inc/isoforge.sh
+
+  SELECTED_IMAGE="/stable.iso"
+  SELECTED_DEVICE="sda"
+  SELECTED_BACKGROUND="/stable.png"
+  SELECTED_IMAGES=("/stable.iso")
+
+  cancelled_action() {
+    SELECTED_IMAGE="/partial.iso"
+    SELECTED_DEVICE="sdb"
+    SELECTED_BACKGROUND="/partial.png"
+    SELECTED_IMAGES=("/partial-a.iso" "/partial-b.iso")
+    return 1
+  }
+
+  if run_main_menu_action cancelled_action; then
+    echo "expected cancelled_action to fail" >&2
+    exit 1
+  fi
+  [[ "$SELECTED_IMAGE" == "/stable.iso" ]]
+  [[ "$SELECTED_DEVICE" == "sda" ]]
+  [[ "$SELECTED_BACKGROUND" == "/stable.png" ]]
+  [[ "${#SELECTED_IMAGES[@]}" -eq 1 && "${SELECTED_IMAGES[0]}" == "/stable.iso" ]]
+
+  successful_action() {
+    SELECTED_IMAGE="/next.iso"
+    SELECTED_DEVICE="sdc"
+    SELECTED_BACKGROUND="/next.png"
+    SELECTED_IMAGES=("/next.iso" "/next-extra.iso")
+    return 0
+  }
+
+  run_main_menu_action successful_action
+  [[ "$SELECTED_IMAGE" == "/next.iso" ]]
+  [[ "$SELECTED_DEVICE" == "sdc" ]]
+  [[ "$SELECTED_BACKGROUND" == "/next.png" ]]
+  [[ "${#SELECTED_IMAGES[@]}" -eq 2 ]]
+)
