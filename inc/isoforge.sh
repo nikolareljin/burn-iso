@@ -59,14 +59,16 @@ if [[ -z "$VERSION" && -f "$VERSION_FILE" ]]; then
 fi
 VERSION="${VERSION:-0.1.0}"
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --config) CONFIG_FILE="$2"; shift 2;;
-    --version) echo "$VERSION"; exit 0;;
-    -h|--help) usage; exit 0;;
-    *) print_error "Unknown argument: $1"; usage; exit 2;;
-  esac
-done
+parse_cli_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --config) CONFIG_FILE="$2"; shift 2;;
+      --version) echo "$VERSION"; exit 0;;
+      -h|--help) usage; exit 0;;
+      *) print_error "Unknown argument: $1"; usage; exit 2;;
+    esac
+  done
+}
 
 SELECTED_IMAGE=""
 SELECTED_DEVICE=""
@@ -879,10 +881,10 @@ main_menu() {
       quit   "Quit") || break
 
     case "$choice" in
-      image) run_main_menu_action select_image_source     ;;
-      bg)    run_main_menu_action select_background_image ;;
-      drive) run_main_menu_action select_drive            ;;
-      flash) run_main_menu_action flash_image             ;;
+      image) if ! run_main_menu_action select_image_source; then :; fi ;;
+      bg)    if ! run_main_menu_action select_background_image; then :; fi ;;
+      drive) if ! run_main_menu_action select_drive; then :; fi ;;
+      flash) if ! run_main_menu_action flash_image; then :; fi ;;
       quit)  break               ;;
     esac
   done
@@ -890,5 +892,6 @@ main_menu() {
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  parse_cli_args "$@"
   main_menu "$@"
 fi

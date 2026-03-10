@@ -5,8 +5,10 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 (
   cd "$ROOT_DIR"
+  set -- --unexpected-flag
   export ISOFORGE_DISABLE_EXIT_TRAP=1
   source ./inc/isoforge.sh
+  [[ "$#" -eq 1 && "$1" == "--unexpected-flag" ]]
 
   SELECTED_IMAGE="/stable.iso"
   SELECTED_DEVICE="sda"
