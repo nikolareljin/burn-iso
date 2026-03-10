@@ -20,13 +20,18 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
     SELECTED_DEVICE="sdb"
     SELECTED_BACKGROUND="/partial.png"
     SELECTED_IMAGES=("/partial-a.iso" "/partial-b.iso")
-    return 1
+    return 7
   }
 
-  if run_main_menu_action cancelled_action; then
+  set +e
+  run_main_menu_action cancelled_action
+  status=$?
+  set -e
+  if [[ "$status" -eq 0 ]]; then
     echo "expected cancelled_action to fail" >&2
     exit 1
   fi
+  [[ "$status" -eq 7 ]]
   [[ "$SELECTED_IMAGE" == "/stable.iso" ]]
   [[ "$SELECTED_DEVICE" == "sda" ]]
   [[ "$SELECTED_BACKGROUND" == "/stable.png" ]]
@@ -46,3 +51,18 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   [[ "$SELECTED_BACKGROUND" == "/next.png" ]]
   [[ "${#SELECTED_IMAGES[@]}" -eq 2 ]]
 )
+
+tmp_output="$(mktemp)"
+set +e
+ISOFORGE_DISABLE_EXIT_TRAP=1 bash ./inc/isoforge.sh --config >"$tmp_output" 2>&1
+status=$?
+set -e
+if [[ "$status" -eq 0 ]]; then
+  echo "expected parse_cli_args --config to fail" >&2
+  rm -f "$tmp_output"
+  exit 1
+fi
+output="$(cat "$tmp_output")"
+rm -f "$tmp_output"
+[[ "$status" -eq 2 ]]
+[[ "$output" == *"Missing value for --config"* ]]

@@ -62,7 +62,15 @@ VERSION="${VERSION:-0.1.0}"
 parse_cli_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --config) CONFIG_FILE="$2"; shift 2;;
+      --config)
+        if [[ $# -lt 2 || -z "${2:-}" ]]; then
+          print_error "Missing value for --config"
+          usage
+          exit 2
+        fi
+        CONFIG_FILE="$2"
+        shift 2
+        ;;
       --version) echo "$VERSION"; exit 0;;
       -h|--help) usage; exit 0;;
       *) print_error "Unknown argument: $1"; usage; exit 2;;
@@ -98,11 +106,13 @@ run_main_menu_action() {
 
   # Canceling a sub-flow should always land back on the main page with the
   # last committed selections intact rather than leaking partial state.
-  if ! "$action_name"; then
+  if "$action_name"; then
+    return 0
+  else
+    local status=$?
     restore_main_menu_snapshot "$saved_image" "$saved_device" "$saved_background" "${saved_images[@]}"
-    return 1
+    return "$status"
   fi
-  return 0
 }
 
 require_tool() {
@@ -893,5 +903,5 @@ main_menu() {
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   parse_cli_args "$@"
-  main_menu "$@"
+  main_menu
 fi
