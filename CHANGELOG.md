@@ -9,6 +9,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ### TUI
 - `Flash!` in `inc/isoforge.sh` now redirects users to drive selection when no drive is chosen, keeps the current image selection intact, and continues into the flash confirmation flow after a drive is picked.
 - Added `scripts/test-flash-drive-redirect.sh` and wired it into `./test` to keep the redirect behavior covered.
+- Download failures now persist their latest summary, source, URL, timestamp, and `/tmp` log path in session state so the details remain visible in the `isoforge` main status panel after the error dialog is dismissed.
+- `./download` now prints the last tracked download failure summary and log path at the end of a failed run.
+- Added `scripts/test-download-error-state.sh` and wired it into `./test` to keep the persisted error summary behavior covered.
 
 ## 2026-03-08
 

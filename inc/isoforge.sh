@@ -39,6 +39,7 @@ fi
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging help dialog file os json deps
+source "$REPO_ROOT/inc/download-state.sh"
 
 # Always restore a clean terminal UI when exiting (including Cancel/interrupt)
 reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
@@ -244,6 +245,9 @@ show_summary() {
   [[ $multi_count -gt 1 ]] && img="${multi_count} images (Ventoy)"
   local bg="${SELECTED_BACKGROUND:-<none>}"
   printf "Images: %s\nDrive: %s\nBackground: %s\n" "$img" "$dev" "$bg"
+  if has_last_download_error; then
+    printf "\n%s\n" "$(last_download_error_summary)"
+  fi
 }
 
 select_image_source() {
@@ -323,8 +327,7 @@ select_images_from_config_multi() {
       output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
     fi
     if [[ ! -f "$output" ]]; then
-      # Script-helpers handles dialog progress + failure details.
-      download_file "$url" "$output" || errs=$((errs+1))
+      download_file_with_error_tracking "$url" "$output" "multi-download" "$id" || errs=$((errs+1))
     fi
     path="$DOWNLOAD_DIR/$output"
     if [[ -f "$path" ]]; then SELECTED_IMAGES+=("$path"); fi
@@ -340,7 +343,7 @@ select_images_from_config_multi() {
       detail="${detail}\nSkipped unsupported URL selections: ${skipped_unsupported[*]}"
     fi
     dialog --title "Download completed with warnings" --msgbox \
-      "Some selected items could not be processed (${errs}).\nThis may be due to missing URLs, unsupported URL schemes, insecure URL rejection, or download failures.\nOnly successfully downloaded files were kept in the selection.${detail}" 14 74
+      "Some selected items could not be processed (${errs}).\nThis may be due to missing URLs, unsupported URL schemes, insecure URL rejection, or download failures.\nOnly successfully downloaded files were kept in the selection.\n\nThe latest download failure remains visible in the main status panel.${detail}" 16 74
   fi
   if [[ ${#SELECTED_IMAGES[@]} -eq 1 ]]; then
     SELECTED_IMAGE="${SELECTED_IMAGES[0]}"
@@ -456,10 +459,8 @@ select_image_from_config() {
     output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
   fi
 
-  # Script-helpers handles dialog progress + failure details.
-  if ! download_file "$url" "$output"; then
+  if ! download_file_with_error_tracking "$url" "$output" "single-download" "$chosen"; then
     popd >/dev/null
-    dialog --title "Error" --msgbox "Download failed for: $output" 8 50
     return 1
   fi
 

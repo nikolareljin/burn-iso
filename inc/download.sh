@@ -22,6 +22,7 @@ fi
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging dialog file os deps
+source "$REPO_ROOT/inc/download-state.sh"
 
 # Always restore a clean terminal UI when exiting (including Cancel/interrupt)
 reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
@@ -173,8 +174,7 @@ for id in $selected; do
   if [[ "$output" != *.* ]]; then
     output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
   fi
-  # Script-helpers handles dialog progress + failure details.
-  if ! download_file "$url" "$output"; then
+  if ! download_file_with_error_tracking "$url" "$output" "batch-download" "$id"; then
     print_error "Failed to download $id"
     errors=$((errors+1))
   fi
@@ -185,6 +185,9 @@ if [[ "$errors" -eq 0 ]]; then
   print_success "Download completed! Files saved to $DOWNLOAD_DIR"
 else
   print_warning "Completed with $errors error(s). Check logs."
+  if has_last_download_error; then
+    print_last_download_error_cli
+  fi
 fi
 
 # End of script
