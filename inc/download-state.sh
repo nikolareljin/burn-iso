@@ -61,6 +61,11 @@ download_file_with_error_tracking() {
   local output="${2:-}"
   local operation="${3:-download}"
   local source_ref="${4:-$url}"
+  local function_errexit_was_on=0
+
+  if [[ $- == *e* ]]; then
+    function_errexit_was_on=1
+  fi
 
   if [[ -z "$output" ]]; then
     output=$(basename "$url")
@@ -122,13 +127,13 @@ download_file_with_error_tracking() {
   local pid=$!
 
   if command -v dialog >/dev/null 2>&1; then
-    local pipefail_was_on=0 errexit_was_on=0 dlg_rc
+    local pipefail_was_on=0 dialog_errexit_was_on=0 dlg_rc
     if shopt -qo pipefail; then
       pipefail_was_on=1
       set +o pipefail
     fi
     if [[ $- == *e* ]]; then
-      errexit_was_on=1
+      dialog_errexit_was_on=1
       set +e
     fi
     (
@@ -148,7 +153,7 @@ download_file_with_error_tracking() {
       printf 'XXX\n100\nFinalizing...\nXXX\n'
     ) | dialog --no-shadow --title "Downloading" --gauge "Preparing download..." 12 72 0
     dlg_rc=$?
-    if (( errexit_was_on )); then
+    if (( dialog_errexit_was_on )); then
       set -e
     fi
     if (( pipefail_was_on )); then
@@ -157,8 +162,8 @@ download_file_with_error_tracking() {
     if (( dlg_rc != 0 )); then
       if kill -0 "$pid" >/dev/null 2>&1; then
         kill "$pid" 2>/dev/null || true
-        wait "$pid" 2>/dev/null || true
       fi
+      wait "$pid" 2>/dev/null || true
       rm -f "$tmpfile"
       local err_preview="Download canceled by user via dialog."
       printf '%s\n' "$err_preview" >"$log_file"
@@ -178,18 +183,26 @@ download_file_with_error_tracking() {
   fi
 
   local rc
-  set +e
+  if (( function_errexit_was_on )); then
+    set +e
+  fi
   wait "$pid"
   rc=$?
-  set -e
+  if (( function_errexit_was_on )); then
+    set -e
+  fi
   if (( rc == 0 )); then
     local mv_rc rm_rc op_rc err_preview
-    set +e
+    if (( function_errexit_was_on )); then
+      set +e
+    fi
     mv -f "$tmpfile" "$output"
     mv_rc=$?
     rm -f "$log_file"
     rm_rc=$?
-    set -e
+    if (( function_errexit_was_on )); then
+      set -e
+    fi
     if (( mv_rc == 0 && rm_rc == 0 )); then
       return 0
     fi

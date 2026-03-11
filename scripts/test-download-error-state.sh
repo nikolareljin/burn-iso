@@ -55,9 +55,14 @@ done
 EOF
   chmod +x "$fakebin/curl"
   old_path="$PATH"
+  set +e
   PATH="$fakebin"
   download_file_with_error_tracking "https://example.invalid/success.bin" "$success_file" "batch-download" "DemoItem"
+  success_rc=$?
   PATH="$old_path"
+  [[ "$success_rc" -eq 0 ]]
+  [[ $- != *e* ]]
+  set -e
 
   cli_summary="$(print_last_download_error_cli)"
   [[ "$cli_summary" == *"Ubuntu_24_04"* ]]
