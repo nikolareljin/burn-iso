@@ -122,10 +122,14 @@ download_file_with_error_tracking() {
   local pid=$!
 
   if command -v dialog >/dev/null 2>&1; then
-    local pipefail_was_on=0 dlg_rc
+    local pipefail_was_on=0 errexit_was_on=0 dlg_rc
     if shopt -qo pipefail; then
       pipefail_was_on=1
       set +o pipefail
+    fi
+    if [[ $- == *e* ]]; then
+      errexit_was_on=1
+      set +e
     fi
     (
       local percent=0 cur_bytes
@@ -144,6 +148,9 @@ download_file_with_error_tracking() {
       printf 'XXX\n100\nFinalizing...\nXXX\n'
     ) | dialog --no-shadow --title "Downloading" --gauge "Preparing download..." 12 72 0
     dlg_rc=$?
+    if (( errexit_was_on )); then
+      set -e
+    fi
     if (( pipefail_was_on )); then
       set -o pipefail
     fi
