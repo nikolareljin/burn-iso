@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## 2026-03-08
 
+### TUI
+- Main-menu actions in `inc/isoforge.sh` now restore the last committed selection state after a canceled or failed sub-flow, so Cancel consistently returns users to the main page without leaking partial image/drive/background choices.
+- Added `scripts/test-cancel-flow.sh` and wired it into `./test` to keep cancel rollback behavior covered.
+
 ### Downloads
 - Refactored download flows in `inc/isoforge.sh` and `inc/download.sh` to use script-helpers download methods (`download_file`/dialog-backed progress) instead of duplicated in-repo gauge implementations.
 - Aligned `inc/download.sh` helper path default to `scripts/script-helpers` to match the script-helpers layout.

@@ -42,7 +42,9 @@ shlib_import logging help dialog file os json deps
 
 # Always restore a clean terminal UI when exiting (including Cancel/interrupt)
 reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
-trap reset_tui EXIT INT TERM
+if [[ "${ISOFORGE_DISABLE_EXIT_TRAP:-0}" != "1" ]]; then
+  trap reset_tui EXIT INT TERM
+fi
 
 CONFIG_FILE="${CONFIG_FILE:-$REPO_ROOT/config.json}"
 
@@ -57,14 +59,24 @@ if [[ -z "$VERSION" && -f "$VERSION_FILE" ]]; then
 fi
 VERSION="${VERSION:-0.1.0}"
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --config) CONFIG_FILE="$2"; shift 2;;
-    --version) echo "$VERSION"; exit 0;;
-    -h|--help) usage; exit 0;;
-    *) print_error "Unknown argument: $1"; usage; exit 2;;
-  esac
-done
+parse_cli_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --config)
+        if [[ $# -lt 2 || -z "${2:-}" ]]; then
+          print_error "Missing value for --config"
+          usage
+          exit 2
+        fi
+        CONFIG_FILE="$2"
+        shift 2
+        ;;
+      --version) echo "$VERSION"; exit 0;;
+      -h|--help) usage; exit 0;;
+      *) print_error "Unknown argument: $1"; usage; exit 2;;
+    esac
+  done
+}
 
 SELECTED_IMAGE=""
 SELECTED_DEVICE=""
@@ -73,6 +85,35 @@ DEVICE_FILTER="usb"
 # Multi-image (Ventoy) and background support
 declare -a SELECTED_IMAGES=()
 SELECTED_BACKGROUND=""
+
+restore_main_menu_snapshot() {
+  local saved_image="$1"
+  local saved_device="$2"
+  local saved_background="$3"
+  SELECTED_IMAGE="$saved_image"
+  SELECTED_DEVICE="$saved_device"
+  SELECTED_BACKGROUND="$saved_background"
+  shift 3
+  SELECTED_IMAGES=("$@")
+}
+
+run_main_menu_action() {
+  local action_name="$1"
+  local saved_image="$SELECTED_IMAGE"
+  local saved_device="$SELECTED_DEVICE"
+  local saved_background="$SELECTED_BACKGROUND"
+  local -a saved_images=("${SELECTED_IMAGES[@]}")
+
+  # Canceling a sub-flow should always land back on the main page with the
+  # last committed selections intact rather than leaking partial state.
+  if "$action_name"; then
+    return 0
+  else
+    local status=$?
+    restore_main_menu_snapshot "$saved_image" "$saved_device" "$saved_background" "${saved_images[@]}"
+    return "$status"
+  fi
+}
 
 require_tool() {
   local t="$1"
@@ -850,14 +891,17 @@ main_menu() {
       quit   "Quit") || break
 
     case "$choice" in
-      image) select_image_source ;;
-      bg)    select_background_image ;;
-      drive) select_drive        ;;
-      flash) flash_image         ;;
+      image) if ! run_main_menu_action select_image_source; then :; fi ;;
+      bg)    if ! run_main_menu_action select_background_image; then :; fi ;;
+      drive) if ! run_main_menu_action select_drive; then :; fi ;;
+      flash) if ! run_main_menu_action flash_image; then :; fi ;;
       quit)  break               ;;
     esac
   done
   clear
 }
 
-main_menu "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  parse_cli_args "$@"
+  main_menu
+fi
