@@ -69,10 +69,25 @@ download_file_with_error_tracking() {
     fi
   fi
 
-  local dir tmpfile log_file
+  local dir tmpfile log_file mkdir_err
   dir=$(dirname -- "$output")
   if [[ -n "$dir" && "$dir" != "." ]] && [[ ! -d "$dir" ]]; then
-    mkdir -p "$dir" || return 1
+    if ! mkdir_err=$(mkdir -p "$dir" 2>&1); then
+      log_file=$(mktemp "/tmp/isoforge-download.XXXXXXXX.log")
+      {
+        printf 'Failed to create output directory "%s" for download.\n' "$dir"
+        printf 'mkdir output:\n%s\n' "$mkdir_err"
+      } >"$log_file"
+      record_last_download_error \
+        "$(date '+%Y-%m-%d %H:%M:%S %Z')" \
+        "$operation" \
+        "$source_ref" \
+        "$url" \
+        "$log_file" \
+        "Failed to create output directory \"$dir\"." \
+        "1"
+      return 1
+    fi
   fi
   tmpfile="${output}.part"
   log_file=$(mktemp "/tmp/isoforge-download.XXXXXXXX.log")
@@ -107,6 +122,11 @@ download_file_with_error_tracking() {
   local pid=$!
 
   if command -v dialog >/dev/null 2>&1; then
+    local pipefail_was_on=0 dlg_rc
+    if shopt -qo pipefail; then
+      pipefail_was_on=1
+      set +o pipefail
+    fi
     (
       local percent=0 cur_bytes
       while kill -0 "$pid" >/dev/null 2>&1; do
@@ -123,7 +143,10 @@ download_file_with_error_tracking() {
       done
       printf 'XXX\n100\nFinalizing...\nXXX\n'
     ) | dialog --no-shadow --title "Downloading" --gauge "Preparing download..." 12 72 0
-    local dlg_rc=$?
+    dlg_rc=$?
+    if (( pipefail_was_on )); then
+      set -o pipefail
+    fi
     if (( dlg_rc != 0 )); then
       if kill -0 "$pid" >/dev/null 2>&1; then
         kill "$pid" 2>/dev/null || true
@@ -153,9 +176,46 @@ download_file_with_error_tracking() {
   rc=$?
   set -e
   if (( rc == 0 )); then
+    local mv_rc rm_rc op_rc err_preview
+    set +e
     mv -f "$tmpfile" "$output"
+    mv_rc=$?
     rm -f "$log_file"
-    return 0
+    rm_rc=$?
+    set -e
+    if (( mv_rc == 0 && rm_rc == 0 )); then
+      return 0
+    fi
+    op_rc=$mv_rc
+    if (( op_rc == 0 )); then
+      op_rc=$rm_rc
+    fi
+    if (( mv_rc != 0 )); then
+      rm -f "$tmpfile"
+    fi
+    if (( mv_rc != 0 )); then
+      printf '\nFailed to move downloaded file into place.\n' >>"$log_file"
+    fi
+    if (( rm_rc != 0 )); then
+      printf '\nFailed to remove temporary download log.\n' >>"$log_file"
+    fi
+    if [[ -s "$log_file" ]]; then
+      err_preview=$(tail -n 20 "$log_file")
+    else
+      err_preview="No additional error output captured."
+    fi
+    record_last_download_error \
+      "$(date '+%Y-%m-%d %H:%M:%S %Z')" \
+      "$operation" \
+      "$source_ref" \
+      "$url" \
+      "$log_file" \
+      "$err_preview" \
+      "$op_rc"
+    if command -v dialog >/dev/null 2>&1; then
+      show_last_download_error_dialog || true
+    fi
+    return "$op_rc"
   fi
 
   rm -f "$tmpfile"

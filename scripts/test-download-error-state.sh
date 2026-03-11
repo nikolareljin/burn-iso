@@ -64,6 +64,77 @@ EOF
   [[ "$cli_summary" == *"$tmp_log"* ]]
 
   clear_last_download_error
+
+  mkdir_fail_root="$tmpdir/mkdir-fail"
+  fakebin_mkdir_fail="$tmpdir/fakebin-mkdir-fail"
+  mkdir -p "$fakebin_mkdir_fail"
+  for tool in basename dirname mktemp mv rm wc date tail; do
+    ln -s "$(command -v "$tool")" "$fakebin_mkdir_fail/$tool"
+  done
+  cat >"$fakebin_mkdir_fail/mkdir" <<'EOF'
+#!/bin/bash
+echo "permission denied" >&2
+exit 1
+EOF
+  chmod +x "$fakebin_mkdir_fail/mkdir"
+  old_path="$PATH"
+  PATH="$fakebin_mkdir_fail"
+  if download_file_with_error_tracking "https://example.invalid/mkdir.bin" "$mkdir_fail_root/out.bin" "mkdir-download" "MkdirItem"; then
+    echo "expected mkdir failure" >&2
+    exit 1
+  fi
+  PATH="$old_path"
+  cli_summary="$(print_last_download_error_cli)"
+  [[ "$cli_summary" == *"mkdir-download MkdirItem"* ]]
+  [[ "$cli_summary" == *"Failed to create output directory"* ]]
+
+  clear_last_download_error
+
+  cancel_file="$tmpdir/cancel.bin"
+  fakebin_dialog="$tmpdir/fakebin-dialog"
+  mkdir -p "$fakebin_dialog"
+  for tool in basename cat dirname mkdir mktemp mv rm wc date tail sleep; do
+    ln -s "$(command -v "$tool")" "$fakebin_dialog/$tool"
+  done
+  cat >"$fakebin_dialog/curl" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+out=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o)
+      out="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+printf 'partial' >"$out"
+sleep 2
+EOF
+  cat >"$fakebin_dialog/dialog" <<'EOF'
+#!/bin/bash
+cat >/dev/null || true
+exit 1
+EOF
+  chmod +x "$fakebin_dialog/curl" "$fakebin_dialog/dialog"
+  old_path="$PATH"
+  PATH="$fakebin_dialog"
+  if download_file_with_error_tracking "https://example.invalid/cancel.bin" "$cancel_file" "dialog-download" "DialogItem"; then
+    echo "expected dialog cancellation" >&2
+    exit 1
+  else
+    rc=$?
+  fi
+  PATH="$old_path"
+  [[ "$rc" -eq 1 ]]
+  cli_summary="$(print_last_download_error_cli)"
+  [[ "$cli_summary" == *"dialog-download DialogItem"* ]]
+  [[ "$cli_summary" == *"Download canceled by user via dialog."* ]]
+
+  clear_last_download_error
   summary="$(show_summary)"
   [[ "$summary" != *"Last download error:"* ]]
 )
