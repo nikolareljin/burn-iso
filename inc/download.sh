@@ -22,6 +22,7 @@ fi
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging dialog file os deps
+# shellcheck source=/dev/null
 source "$REPO_ROOT/inc/download-state.sh"
 
 # Always restore a clean terminal UI when exiting (including Cancel/interrupt)
@@ -153,6 +154,7 @@ selected=$(dialog --stdout --title "Download ISOs" --checklist "Select one or mo
 selected=$(sed 's/\"//g' <<<"$selected")
 
 pushd "$DOWNLOAD_DIR" >/dev/null
+clear_last_download_error
 errors=0
 for id in $selected; do
   # Skip category headers if user selected them

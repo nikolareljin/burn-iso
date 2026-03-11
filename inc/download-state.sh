@@ -129,8 +129,21 @@ download_file_with_error_tracking() {
         kill "$pid" 2>/dev/null || true
         wait "$pid" 2>/dev/null || true
       fi
-      rm -f "$tmpfile" "$log_file"
-      return 1
+      rm -f "$tmpfile"
+      local err_preview="Download canceled by user via dialog."
+      printf '%s\n' "$err_preview" >"$log_file"
+      record_last_download_error \
+        "$(date '+%Y-%m-%d %H:%M:%S %Z')" \
+        "$operation" \
+        "$source_ref" \
+        "$url" \
+        "$log_file" \
+        "$err_preview" \
+        "$dlg_rc"
+      if command -v dialog >/dev/null 2>&1; then
+        show_last_download_error_dialog || true
+      fi
+      return "$dlg_rc"
     fi
   fi
 
@@ -142,7 +155,6 @@ download_file_with_error_tracking() {
   if (( rc == 0 )); then
     mv -f "$tmpfile" "$output"
     rm -f "$log_file"
-    clear_last_download_error
     return 0
   fi
 

@@ -39,6 +39,7 @@ fi
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging help dialog file os json deps
+# shellcheck source=/dev/null
 source "$REPO_ROOT/inc/download-state.sh"
 
 # Always restore a clean terminal UI when exiting (including Cancel/interrupt)
@@ -272,6 +273,7 @@ select_image_source() {
 # Multi-select from config: download chosen ISOs, then select them
 select_images_from_config_multi() {
   dialog_init
+  clear_last_download_error
   load_config
   create_directory "$DOWNLOAD_DIR" >/dev/null || true
   mapfile -t rows < <(jq -r '.distros[] | "\(.id)\t\(.label)\t\(.url)"' "$CONFIG_FILE")
@@ -398,6 +400,7 @@ select_image_local() {
 
 select_image_from_config() {
   dialog_init
+  clear_last_download_error
   load_config
   create_directory "$DOWNLOAD_DIR" >/dev/null || true
 
