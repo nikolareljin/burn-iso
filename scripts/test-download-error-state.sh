@@ -33,11 +33,12 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   success_file="$tmpdir/success.bin"
   fakebin="$tmpdir/fakebin"
   mkdir -p "$fakebin"
+  ln -s "$(command -v bash)" "$fakebin/bash"
   for tool in basename dirname mkdir mktemp mv rm wc date tail; do
     ln -s "$(command -v "$tool")" "$fakebin/$tool"
   done
   cat >"$fakebin/curl" <<'EOF'
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 out=""
 while [[ $# -gt 0 ]]; do
@@ -73,11 +74,12 @@ EOF
   mkdir_fail_root="$tmpdir/mkdir-fail"
   fakebin_mkdir_fail="$tmpdir/fakebin-mkdir-fail"
   mkdir -p "$fakebin_mkdir_fail"
+  ln -s "$(command -v bash)" "$fakebin_mkdir_fail/bash"
   for tool in basename dirname mktemp mv rm wc date tail; do
     ln -s "$(command -v "$tool")" "$fakebin_mkdir_fail/$tool"
   done
   cat >"$fakebin_mkdir_fail/mkdir" <<'EOF'
-#!/bin/bash
+#!/usr/bin/env bash
 echo "permission denied" >&2
 exit 1
 EOF
@@ -98,11 +100,12 @@ EOF
   cancel_file="$tmpdir/cancel.bin"
   fakebin_dialog="$tmpdir/fakebin-dialog"
   mkdir -p "$fakebin_dialog"
+  ln -s "$(command -v bash)" "$fakebin_dialog/bash"
   for tool in basename cat dirname mkdir mktemp mv rm wc date tail sleep; do
     ln -s "$(command -v "$tool")" "$fakebin_dialog/$tool"
   done
   cat >"$fakebin_dialog/curl" <<'EOF'
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 out=""
 while [[ $# -gt 0 ]]; do
@@ -120,7 +123,7 @@ printf 'partial' >"$out"
 sleep 2
 EOF
   cat >"$fakebin_dialog/dialog" <<'EOF'
-#!/bin/bash
+#!/usr/bin/env bash
 cat >/dev/null || true
 exit 1
 EOF
@@ -139,7 +142,45 @@ EOF
   [[ "$cli_summary" == *"dialog-download DialogItem"* ]]
   [[ "$cli_summary" == *"Download canceled by user via dialog."* ]]
 
+  tracked_log="$(mktemp "/tmp/isoforge-download.XXXXXXXX.log")"
+  printf 'temporary tracked failure\n' >"$tracked_log"
+  record_last_download_error \
+    "2026-03-11 10:20:00 EDT" \
+    "tracked-download" \
+    "TrackedItem" \
+    "https://example.invalid/tracked.iso" \
+    "$tracked_log" \
+    "tracked failure" \
+    "1"
+  [[ -f "$tracked_log" ]]
   clear_last_download_error
+  [[ ! -e "$tracked_log" ]]
+
+  first_tracked_log="$(mktemp "/tmp/isoforge-download.XXXXXXXX.log")"
+  second_tracked_log="$(mktemp "/tmp/isoforge-download.XXXXXXXX.log")"
+  printf 'first tracked failure\n' >"$first_tracked_log"
+  printf 'second tracked failure\n' >"$second_tracked_log"
+  record_last_download_error \
+    "2026-03-11 10:21:00 EDT" \
+    "tracked-download" \
+    "TrackedItemOne" \
+    "https://example.invalid/tracked-one.iso" \
+    "$first_tracked_log" \
+    "first tracked failure" \
+    "1"
+  record_last_download_error \
+    "2026-03-11 10:22:00 EDT" \
+    "tracked-download" \
+    "TrackedItemTwo" \
+    "https://example.invalid/tracked-two.iso" \
+    "$second_tracked_log" \
+    "second tracked failure" \
+    "2"
+  [[ ! -e "$first_tracked_log" ]]
+  [[ -e "$second_tracked_log" ]]
+
+  clear_last_download_error
+  [[ ! -e "$second_tracked_log" ]]
   summary="$(show_summary)"
   [[ "$summary" != *"Last download error:"* ]]
 )

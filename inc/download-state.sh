@@ -8,7 +8,16 @@ LAST_DOWNLOAD_ERROR_LOG="${LAST_DOWNLOAD_ERROR_LOG:-}"
 LAST_DOWNLOAD_ERROR_MESSAGE="${LAST_DOWNLOAD_ERROR_MESSAGE:-}"
 LAST_DOWNLOAD_ERROR_RC="${LAST_DOWNLOAD_ERROR_RC:-}"
 
+cleanup_tracked_download_log() {
+  local log_path="${1:-}"
+
+  if [[ "$log_path" == /tmp/isoforge-download.*.log ]] && [[ -f "$log_path" ]]; then
+    rm -f "$log_path"
+  fi
+}
+
 clear_last_download_error() {
+  cleanup_tracked_download_log "${LAST_DOWNLOAD_ERROR_LOG:-}"
   LAST_DOWNLOAD_ERROR_TIME=""
   LAST_DOWNLOAD_ERROR_OPERATION=""
   LAST_DOWNLOAD_ERROR_SOURCE=""
@@ -19,6 +28,12 @@ clear_last_download_error() {
 }
 
 record_last_download_error() {
+  local previous_log="${LAST_DOWNLOAD_ERROR_LOG:-}"
+  local next_log="${5:-}"
+
+  if [[ -n "$previous_log" && "$previous_log" != "$next_log" ]]; then
+    cleanup_tracked_download_log "$previous_log"
+  fi
   LAST_DOWNLOAD_ERROR_TIME="${1:-}"
   LAST_DOWNLOAD_ERROR_OPERATION="${2:-}"
   LAST_DOWNLOAD_ERROR_SOURCE="${3:-}"
@@ -120,7 +135,7 @@ download_file_with_error_tracking() {
   if [[ "$tool" == "curl" ]]; then
     cmd=(curl -L --fail -sS -o "$tmpfile" "$url")
   else
-    cmd=(wget -q -O "$tmpfile" "$url")
+    cmd=(wget -nv -O "$tmpfile" "$url")
   fi
 
   "${cmd[@]}" >"$log_file" 2>&1 &
@@ -198,8 +213,11 @@ download_file_with_error_tracking() {
     fi
     mv -f "$tmpfile" "$output"
     mv_rc=$?
-    rm -f "$log_file"
-    rm_rc=$?
+    rm_rc=0
+    if (( mv_rc == 0 )); then
+      rm -f "$log_file"
+      rm_rc=$?
+    fi
     if (( function_errexit_was_on )); then
       set -e
     fi
