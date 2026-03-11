@@ -520,12 +520,18 @@ flash_confirm() {
     "Images:\n  $( if [[ ${#SELECTED_IMAGES[@]} -gt 1 ]]; then echo "${#SELECTED_IMAGES[@]} selected (Ventoy)"; else echo "${SELECTED_IMAGE:-<not selected>}"; fi )\n\nDrive:\n  /dev/$SELECTED_DEVICE\n\nAll data on the drive will be destroyed. Proceed?" 12 70
 }
 
+ensure_flash_drive_selected() {
+  if [[ -n "${SELECTED_DEVICE:-}" ]]; then
+    return 0
+  fi
+
+  dialog --title "Missing selection" --msgbox "Please select a drive first." 8 60
+  select_drive || return 1
+}
+
 flash_image() {
   dialog_init
-  if [[ -z "${SELECTED_DEVICE:-}" ]]; then
-    dialog --title "Missing selection" --msgbox "Please select a drive first." 8 60
-    return 1
-  fi
+  ensure_flash_drive_selected || return 1
   if [[ ${#SELECTED_IMAGES[@]} -gt 1 ]]; then
     flash_with_ventoy || return 1
     return 0

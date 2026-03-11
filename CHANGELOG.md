@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning when applicable.
 
+## 2026-03-11
+
+### TUI
+- `Flash!` in `inc/isoforge.sh` now redirects users to drive selection when no drive is chosen, keeps the current image selection intact, and continues into the flash confirmation flow after a drive is picked.
+- Added `scripts/test-flash-drive-redirect.sh` and wired it into `./test` to keep the redirect behavior covered.
+
 ## 2026-03-08
 
 ### TUI
