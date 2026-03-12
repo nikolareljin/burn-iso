@@ -334,22 +334,22 @@ select_images_from_config_multi() {
     if [[ -f "$path" ]]; then SELECTED_IMAGES+=("$path"); fi
   done
   popd >/dev/null
-	  if (( errs > 0 )); then
-	    local detail=""
-	    local failure_note="If a download fails, the latest failure remains visible in the main status panel."
-	    if has_last_download_error; then
-	      failure_note="The latest download failure remains visible in the main status panel."
-	    fi
-	    if [[ ${#skipped_insecure[@]} -gt 0 ]]; then
-	      detail="${detail}\nSkipped insecure (HTTP) selections: ${skipped_insecure[*]}"
-	      detail="${detail}\nHint: set ALLOW_INSECURE_HTTP_DOWNLOADS=1 only if you explicitly accept insecure downloads."
-	    fi
+  if (( errs > 0 )); then
+    local detail=""
+    local failure_note="If a download fails, the latest failure remains visible in the main status panel."
+    if has_last_download_error; then
+      failure_note="The latest download failure remains visible in the main status panel."
+    fi
+    if [[ ${#skipped_insecure[@]} -gt 0 ]]; then
+      detail="${detail}\nSkipped insecure (HTTP) selections: ${skipped_insecure[*]}"
+      detail="${detail}\nHint: set ALLOW_INSECURE_HTTP_DOWNLOADS=1 only if you explicitly accept insecure downloads."
+    fi
     if [[ ${#skipped_unsupported[@]} -gt 0 ]]; then
       detail="${detail}\nSkipped unsupported URL selections: ${skipped_unsupported[*]}"
-	    fi
-	    dialog --title "Download completed with warnings" --msgbox \
-	      "Some selected items could not be processed (${errs}).\nThis may be due to missing URLs, unsupported URL schemes, insecure URL rejection, or download failures.\nOnly successfully downloaded files were kept in the selection.\n\n${failure_note}${detail}" 16 74
-	  fi
+    fi
+    dialog --title "Download completed with warnings" --msgbox \
+      "Some selected items could not be processed (${errs}).\nThis may be due to missing URLs, unsupported URL schemes, insecure URL rejection, or download failures.\nOnly successfully downloaded files were kept in the selection.\n\n${failure_note}${detail}" 16 74
+  fi
   if [[ ${#SELECTED_IMAGES[@]} -eq 1 ]]; then
     SELECTED_IMAGE="${SELECTED_IMAGES[0]}"
   elif [[ ${#SELECTED_IMAGES[@]} -gt 1 ]]; then
