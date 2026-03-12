@@ -142,6 +142,42 @@ EOF
   [[ "$cli_summary" == *"dialog-download DialogItem"* ]]
   [[ "$cli_summary" == *"Download canceled by user via dialog."* ]]
 
+  flow_log="$tmpdir/flow-error.log"
+  record_last_download_error \
+    "2026-03-11 10:19:00 EDT" \
+    "flow-download" \
+    "FlowItem" \
+    "https://example.invalid/flow.iso" \
+    "$flow_log" \
+    "flow failure" \
+    "1"
+  fakebin_flow="$tmpdir/fakebin-flow"
+  mkdir -p "$fakebin_flow"
+  ln -s "$(command -v bash)" "$fakebin_flow/bash"
+  for tool in jq mkdir sed; do
+    ln -s "$(command -v "$tool")" "$fakebin_flow/$tool"
+  done
+  cat >"$fakebin_flow/dialog" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+  chmod +x "$fakebin_flow/dialog"
+  old_path="$PATH"
+  old_config_file="$CONFIG_FILE"
+  flow_config="$tmpdir/config.json"
+  cat >"$flow_config" <<'EOF'
+{"distros":[{"id":"DemoISO","label":"Demo ISO","url":"https://example.invalid/demo.iso"}]}
+EOF
+  CONFIG_FILE="$flow_config"
+  PATH="$fakebin_flow"
+  select_image_from_config || true
+  select_images_from_config_multi || true
+  PATH="$old_path"
+  CONFIG_FILE="$old_config_file"
+  cli_summary="$(print_last_download_error_cli)"
+  [[ "$cli_summary" == *"flow-download FlowItem"* ]]
+  [[ "$cli_summary" == *"$flow_log"* ]]
+
   tracked_log="$(mktemp "/tmp/isoforge-download.XXXXXXXX.log")"
   printf 'temporary tracked failure\n' >"$tracked_log"
   record_last_download_error \
