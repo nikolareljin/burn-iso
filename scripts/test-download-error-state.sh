@@ -69,6 +69,51 @@ EOF
   [[ "$cli_summary" == *"Ubuntu_24_04"* ]]
   [[ "$cli_summary" == *"$tmp_log"* ]]
 
+  dash_url_file="$tmpdir/leading-dash.bin"
+  fakebin_dash_url="$tmpdir/fakebin-dash-url"
+  mkdir -p "$fakebin_dash_url"
+  ln -s "$(command -v bash)" "$fakebin_dash_url/bash"
+  for tool in basename dirname mkdir mktemp mv rm wc date tail; do
+    ln -s "$(command -v "$tool")" "$fakebin_dash_url/$tool"
+  done
+  cat >"$fakebin_dash_url/curl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+out=""
+seen_double_dash=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o)
+      out="$2"
+      shift 2
+      ;;
+    --)
+      seen_double_dash=1
+      shift
+      break
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+if [[ "$seen_double_dash" -ne 1 ]]; then
+  echo "missing -- before URL" >&2
+  exit 1
+fi
+if [[ "${1:-}" != "-https://example.invalid/dash.bin" ]]; then
+  echo "unexpected URL: ${1:-}" >&2
+  exit 1
+fi
+: >"$out"
+EOF
+  chmod +x "$fakebin_dash_url/curl"
+  old_path="$PATH"
+  PATH="$fakebin_dash_url"
+  download_file_with_error_tracking "-https://example.invalid/dash.bin" "$dash_url_file" "dash-download" "DashItem"
+  PATH="$old_path"
+  [[ -f "$dash_url_file" ]]
+
   clear_last_download_error
 
   mkdir_fail_root="$tmpdir/mkdir-fail"

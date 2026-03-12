@@ -12,7 +12,7 @@ cleanup_tracked_download_log() {
   local log_path="${1:-}"
 
   if [[ "$log_path" == /tmp/isoforge-download.*.log ]] && [[ -f "$log_path" ]]; then
-    rm -f "$log_path"
+    rm -f -- "$log_path"
   fi
 }
 
@@ -92,7 +92,7 @@ download_file_with_error_tracking() {
   local dir tmpfile log_file mkdir_err
   dir=$(dirname -- "$output")
   if [[ -n "$dir" && "$dir" != "." ]] && [[ ! -d "$dir" ]]; then
-    if ! mkdir_err=$(mkdir -p "$dir" 2>&1); then
+    if ! mkdir_err=$(mkdir -p -- "$dir" 2>&1); then
       log_file=$(mktemp "/tmp/isoforge-download.XXXXXXXX.log")
       {
         printf 'Failed to create output directory "%s" for download.\n' "$dir"
@@ -111,7 +111,7 @@ download_file_with_error_tracking() {
   fi
   tmpfile="${output}.part"
   log_file=$(mktemp "/tmp/isoforge-download.XXXXXXXX.log")
-  rm -f "$tmpfile"
+  rm -f -- "$tmpfile"
 
   local tool
   if command -v curl >/dev/null 2>&1; then
@@ -133,9 +133,9 @@ download_file_with_error_tracking() {
 
   local -a cmd
   if [[ "$tool" == "curl" ]]; then
-    cmd=(curl -L --fail -sS -o "$tmpfile" "$url")
+    cmd=(curl -L --fail -sS -o "$tmpfile" -- "$url")
   else
-    cmd=(wget -nv -O "$tmpfile" "$url")
+    cmd=(wget -nv -O "$tmpfile" -- "$url")
   fi
 
   "${cmd[@]}" >"$log_file" 2>&1 &
@@ -179,7 +179,7 @@ download_file_with_error_tracking() {
         kill "$pid" 2>/dev/null || true
       fi
       wait "$pid" 2>/dev/null || true
-      rm -f "$tmpfile"
+      rm -f -- "$tmpfile"
       local err_preview="Download canceled by user via dialog."
       printf '%s\n' "$err_preview" >"$log_file"
       record_last_download_error \
@@ -211,11 +211,11 @@ download_file_with_error_tracking() {
     if (( function_errexit_was_on )); then
       set +e
     fi
-    mv -f "$tmpfile" "$output"
+    mv -f -- "$tmpfile" "$output"
     mv_rc=$?
     rm_rc=0
     if (( mv_rc == 0 )); then
-      rm -f "$log_file"
+      rm -f -- "$log_file"
       rm_rc=$?
     fi
     if (( function_errexit_was_on )); then
@@ -229,7 +229,7 @@ download_file_with_error_tracking() {
       op_rc=$rm_rc
     fi
     if (( mv_rc != 0 )); then
-      rm -f "$tmpfile"
+      rm -f -- "$tmpfile"
     fi
     if (( mv_rc != 0 )); then
       printf '\nFailed to move downloaded file into place.\n' >>"$log_file"
@@ -256,7 +256,7 @@ download_file_with_error_tracking() {
     return "$op_rc"
   fi
 
-  rm -f "$tmpfile"
+  rm -f -- "$tmpfile"
   local err_preview
   if [[ -s "$log_file" ]]; then
     err_preview=$(tail -n 20 "$log_file")
