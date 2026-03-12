@@ -71,6 +71,17 @@ print_last_download_error_cli() {
   printf '%s\n' "$(last_download_error_summary)"
 }
 
+derive_download_output_name() {
+  local url="$1"
+  local output
+
+  output=$(basename -- "$url")
+  if [[ "$output" != *.* ]]; then
+    output=$(printf '%s\n' "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
+  fi
+  printf '%s\n' "$output"
+}
+
 download_file_with_error_tracking() {
   local url="$1"
   local output="${2:-}"
@@ -83,10 +94,7 @@ download_file_with_error_tracking() {
   fi
 
   if [[ -z "$output" ]]; then
-    output=$(basename "$url")
-    if [[ "$output" != *.* ]]; then
-      output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
-    fi
+    output=$(derive_download_output_name "$url")
   fi
 
   local dir tmpfile log_file mkdir_err

@@ -308,7 +308,7 @@ select_images_from_config_multi() {
   SELECTED_IMAGES=()
   local -a skipped_insecure=()
   local -a skipped_unsupported=()
-  local id url output path errs=0
+  local id url output path errs=0 download_failed=0
   for id in $chosen; do
     [[ "$id" == hdr_* ]] && continue
     url=$(jq -r --arg id "$id" '.distros[] | select(.id==$id) | .url' "$CONFIG_FILE")
@@ -323,12 +323,12 @@ select_images_from_config_multi() {
       skipped_insecure+=("$id")
       continue
     fi
-    output=$(basename "$url")
-    if [[ "$output" != *.* ]]; then
-      output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
-    fi
+    output=$(derive_download_output_name "$url")
     if [[ ! -f "$output" ]]; then
-      download_file_with_error_tracking "$url" "$output" "multi-download" "$id" || errs=$((errs+1))
+      if ! download_file_with_error_tracking "$url" "$output" "multi-download" "$id"; then
+        errs=$((errs+1))
+        download_failed=1
+      fi
     fi
     path="$DOWNLOAD_DIR/$output"
     if [[ -f "$path" ]]; then SELECTED_IMAGES+=("$path"); fi
@@ -337,7 +337,7 @@ select_images_from_config_multi() {
   if (( errs > 0 )); then
     local detail=""
     local failure_note="If a download fails, the latest failure remains visible in the main status panel."
-    if has_last_download_error; then
+    if (( download_failed == 1 )) && has_last_download_error; then
       failure_note="The latest download failure remains visible in the main status panel."
     fi
     if [[ ${#skipped_insecure[@]} -gt 0 ]]; then
@@ -459,10 +459,7 @@ select_image_from_config() {
 
   pushd "$DOWNLOAD_DIR" >/dev/null
   # Determine output filename (mirrors scripts/lib/file.sh logic)
-  output=$(basename "$url")
-  if [[ "$output" != *.* ]]; then
-    output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
-  fi
+  output=$(derive_download_output_name "$url")
 
   if ! download_file_with_error_tracking "$url" "$output" "single-download" "$chosen"; then
     popd >/dev/null

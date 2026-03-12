@@ -178,10 +178,7 @@ for id in $selected; do
     errors=$((errors+1))
     continue
   fi
-  output=$(basename "$url")
-  if [[ "$output" != *.* ]]; then
-    output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
-  fi
+  output=$(derive_download_output_name "$url")
   if ! download_file_with_error_tracking "$url" "$output" "batch-download" "$id"; then
     print_error "Failed to download $id"
     errors=$((errors+1))

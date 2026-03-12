@@ -113,6 +113,7 @@ EOF
   download_file_with_error_tracking "-https://example.invalid/dash.bin" "$dash_url_file" "dash-download" "DashItem"
   PATH="$old_path"
   [[ -f "$dash_url_file" ]]
+  [[ "$(derive_download_output_name "-https://example.invalid/dash.bin")" == "dash.bin" ]]
 
   clear_last_download_error
 
@@ -262,6 +263,58 @@ EOF
 
   clear_last_download_error
   [[ ! -e "$second_tracked_log" ]]
+
+  stale_log="$tmpdir/stale-error.log"
+  record_last_download_error \
+    "2026-03-11 10:23:00 EDT" \
+    "stale-download" \
+    "StaleItem" \
+    "https://example.invalid/stale.iso" \
+    "$stale_log" \
+    "stale failure" \
+    "1"
+  warning_capture="$tmpdir/multi-warning.txt"
+  fakebin_multi_warning="$tmpdir/fakebin-multi-warning"
+  mkdir -p "$fakebin_multi_warning"
+  ln -s "$(command -v bash)" "$fakebin_multi_warning/bash"
+  for tool in jq mkdir sed cat; do
+    ln -s "$(command -v "$tool")" "$fakebin_multi_warning/$tool"
+  done
+  cat >"$fakebin_multi_warning/dialog" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+case "${1:-}" in
+  --stdout)
+    printf '"DemoISO"\n'
+    exit 0
+    ;;
+  --title)
+    if [[ "${2:-}" == "Download completed with warnings" && "${3:-}" == "--msgbox" ]]; then
+      printf '%s\n' "${4:-}" >"$WARNING_CAPTURE_FILE"
+      exit 0
+    fi
+    exit 0
+    ;;
+esac
+exit 0
+EOF
+  chmod +x "$fakebin_multi_warning/dialog"
+  multi_warning_config="$tmpdir/multi-warning-config.json"
+  cat >"$multi_warning_config" <<'EOF'
+{"distros":[{"id":"DemoISO","label":"Demo ISO","url":"ftp://example.invalid/demo.iso"}]}
+EOF
+  old_path="$PATH"
+  old_config_file="$CONFIG_FILE"
+  CONFIG_FILE="$multi_warning_config"
+  WARNING_CAPTURE_FILE="$warning_capture" PATH="$fakebin_multi_warning" select_images_from_config_multi || true
+  PATH="$old_path"
+  CONFIG_FILE="$old_config_file"
+  [[ -f "$warning_capture" ]]
+  warning_text="$(cat "$warning_capture")"
+  [[ "$warning_text" == *"If a download fails, the latest failure remains visible in the main status panel."* ]]
+  [[ "$warning_text" != *"The latest download failure remains visible in the main status panel."* ]]
+
+  clear_last_download_error
   summary="$(show_summary)"
   [[ "$summary" != *"Last download error:"* ]]
 )
