@@ -22,8 +22,14 @@ fi
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging dialog file os deps
-# shellcheck source=/dev/null
-source "$REPO_ROOT/inc/download-state.sh"
+if [[ -f "$REPO_ROOT/inc/download-state.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$REPO_ROOT/inc/download-state.sh"
+else
+  >&2 printf "Missing required state file: %s\n" "$REPO_ROOT/inc/download-state.sh"
+  >&2 printf "This script appears to be running from a partial or incomplete installation.\n"
+  exit 1
+fi
 
 # Always restore a clean terminal UI when exiting (including Cancel/interrupt)
 reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
