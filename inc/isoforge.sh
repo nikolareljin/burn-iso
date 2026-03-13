@@ -256,6 +256,17 @@ show_summary() {
   fi
 }
 
+show_about_dialog() {
+  dialog_init
+  dialog --title "About burn-iso" --msgbox \
+"burn-iso helps download Linux images and write them to removable media from a dialog-based CLI.
+
+Author profiles
+GitHub: https://github.com/nikolareljin
+LinkedIn: https://www.linkedin.com/in/nikolareljin" \
+    13 76
+}
+
 select_image_source() {
   dialog_init
   local choice
@@ -901,6 +912,7 @@ main_menu() {
       image  "Select Image(s)" \
       bg     "Select Ventoy Background" \
       drive  "Select Drive" \
+      about  "About" \
       flash  "Flash! (dd for single, Ventoy for multi)" \
       quit   "Quit") || break
 
@@ -908,6 +920,7 @@ main_menu() {
       image) if ! run_main_menu_action select_image_source; then :; fi ;;
       bg)    if ! run_main_menu_action select_background_image; then :; fi ;;
       drive) if ! run_main_menu_action select_drive; then :; fi ;;
+      about) show_about_dialog ;;
       flash) if ! run_main_menu_action flash_image; then :; fi ;;
       quit)  break               ;;
     esac
