@@ -167,14 +167,14 @@ download_file_with_error_tracking() {
           cur_bytes=$(wc -c <"$tmpfile" 2>/dev/null || echo 0)
         fi
         percent=$(( (percent + 3) % 100 ))
-        printf 'XXX\n%d\n' "$percent"
-        printf 'Downloading: %s\n' "$(basename -- "$output")"
-        printf 'Downloaded: %s bytes\n' "$cur_bytes"
-        printf 'XXX\n'
+        printf 'XXX\n%d\n' "$percent" || break
+        printf 'Downloading: %s\n' "$(basename -- "$output")" || break
+        printf 'Downloaded: %s bytes\n' "$cur_bytes" || break
+        printf 'XXX\n' || break
         sleep 1
       done
-      printf 'XXX\n100\nFinalizing...\nXXX\n'
-    ) | dialog --no-shadow --title "Downloading" --gauge "Preparing download..." 12 72 0
+      printf 'XXX\n100\nFinalizing...\nXXX\n' || true
+    ) 2>/dev/null | dialog --no-shadow --title "Downloading" --gauge "Preparing download..." 12 72 0
     dlg_rc=$?
     if (( dialog_errexit_was_on )); then
       set -e
@@ -215,7 +215,7 @@ download_file_with_error_tracking() {
     set -e
   fi
   if (( rc == 0 )); then
-    local mv_rc rm_rc op_rc err_preview
+    local mv_rc rm_rc err_preview
     if (( function_errexit_was_on )); then
       set +e
     fi
@@ -229,12 +229,11 @@ download_file_with_error_tracking() {
     if (( function_errexit_was_on )); then
       set -e
     fi
-    if (( mv_rc == 0 && rm_rc == 0 )); then
+    if (( mv_rc == 0 )); then
+      if (( rm_rc != 0 )); then
+        printf 'warning: failed to remove temporary download log: %s\n' "$log_file" >&2
+      fi
       return 0
-    fi
-    op_rc=$mv_rc
-    if (( op_rc == 0 )); then
-      op_rc=$rm_rc
     fi
     if (( mv_rc != 0 )); then
       rm -f -- "$tmpfile"
@@ -257,11 +256,11 @@ download_file_with_error_tracking() {
       "$url" \
       "$log_file" \
       "$err_preview" \
-      "$op_rc"
+      "$mv_rc"
     if command -v dialog >/dev/null 2>&1; then
       show_last_download_error_dialog || true
     fi
-    return "$op_rc"
+    return "$mv_rc"
   fi
 
   rm -f -- "$tmpfile"

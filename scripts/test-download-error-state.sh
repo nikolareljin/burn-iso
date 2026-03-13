@@ -170,7 +170,6 @@ sleep 2
 EOF
   cat >"$fakebin_dialog/dialog" <<'EOF'
 #!/usr/bin/env bash
-cat >/dev/null || true
 exit 1
 EOF
   chmod +x "$fakebin_dialog/curl" "$fakebin_dialog/dialog"
@@ -184,9 +183,60 @@ EOF
   fi
   PATH="$old_path"
   [[ "$rc" -eq 1 ]]
+  [[ ! -e "$cancel_file.part" ]]
   cli_summary="$(print_last_download_error_cli)"
   [[ "$cli_summary" == *"dialog-download DialogItem"* ]]
   [[ "$cli_summary" == *"Download canceled by user via dialog."* ]]
+
+  clear_last_download_error
+
+  cleanup_warn_file="$tmpdir/cleanup-warn.bin"
+  cleanup_warn_log_capture="$tmpdir/cleanup-warn.stderr"
+  fakebin_cleanup_warn="$tmpdir/fakebin-cleanup-warn"
+  mkdir -p "$fakebin_cleanup_warn"
+  ln -s "$(command -v bash)" "$fakebin_cleanup_warn/bash"
+  for tool in basename dirname mkdir mktemp mv wc date tail cat; do
+    ln -s "$(command -v "$tool")" "$fakebin_cleanup_warn/$tool"
+  done
+  cat >"$fakebin_cleanup_warn/curl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+out=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o)
+      out="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+: >"$out"
+EOF
+  cat >"$fakebin_cleanup_warn/rm" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+for arg in "$@"; do
+  if [[ "$arg" == /tmp/isoforge-download.*.log ]]; then
+    echo "rm failed intentionally" >&2
+    exit 1
+  fi
+done
+exec /usr/bin/rm "$@"
+EOF
+  chmod +x "$fakebin_cleanup_warn/curl" "$fakebin_cleanup_warn/rm"
+  old_path="$PATH"
+  PATH="$fakebin_cleanup_warn"
+  if ! download_file_with_error_tracking "https://example.invalid/cleanup-warn.bin" "$cleanup_warn_file" "cleanup-download" "CleanupItem" 2>"$cleanup_warn_log_capture"; then
+    echo "expected cleanup warning path to stay successful" >&2
+    exit 1
+  fi
+  PATH="$old_path"
+  [[ -f "$cleanup_warn_file" ]]
+  [[ ! -n "${LAST_DOWNLOAD_ERROR_TIME:-}" ]]
+  [[ "$(cat "$cleanup_warn_log_capture")" == *"warning: failed to remove temporary download log:"* ]]
 
   flow_log="$tmpdir/flow-error.log"
   record_last_download_error \
