@@ -193,6 +193,7 @@ EOF
   cleanup_warn_file="$tmpdir/cleanup-warn.bin"
   cleanup_warn_log_capture="$tmpdir/cleanup-warn.stderr"
   fakebin_cleanup_warn="$tmpdir/fakebin-cleanup-warn"
+  real_rm="$(command -v rm)"
   mkdir -p "$fakebin_cleanup_warn"
   ln -s "$(command -v bash)" "$fakebin_cleanup_warn/bash"
   for tool in basename dirname mkdir mktemp mv wc date tail cat; do
@@ -224,18 +225,18 @@ for arg in "$@"; do
     exit 1
   fi
 done
-exec /usr/bin/rm "$@"
+exec "$REAL_RM" "$@"
 EOF
   chmod +x "$fakebin_cleanup_warn/curl" "$fakebin_cleanup_warn/rm"
   old_path="$PATH"
-  PATH="$fakebin_cleanup_warn"
+  REAL_RM="$real_rm" PATH="$fakebin_cleanup_warn"
   if ! download_file_with_error_tracking "https://example.invalid/cleanup-warn.bin" "$cleanup_warn_file" "cleanup-download" "CleanupItem" 2>"$cleanup_warn_log_capture"; then
     echo "expected cleanup warning path to stay successful" >&2
     exit 1
   fi
   PATH="$old_path"
   [[ -f "$cleanup_warn_file" ]]
-  [[ ! -n "${LAST_DOWNLOAD_ERROR_TIME:-}" ]]
+  [[ -z "${LAST_DOWNLOAD_ERROR_TIME:-}" ]]
   [[ "$(cat "$cleanup_warn_log_capture")" == *"warning: failed to remove temporary download log:"* ]]
 
   flow_log="$tmpdir/flow-error.log"

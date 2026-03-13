@@ -10,10 +10,20 @@ LAST_DOWNLOAD_ERROR_RC="${LAST_DOWNLOAD_ERROR_RC:-}"
 
 cleanup_tracked_download_log() {
   local log_path="${1:-}"
+  local cleanup_errexit_was_on=0
 
   if [[ "$log_path" == /tmp/isoforge-download.*.log ]] && [[ -f "$log_path" ]]; then
+    if [[ $- == *e* ]]; then
+      cleanup_errexit_was_on=1
+      set +e
+    fi
     rm -f -- "$log_path"
+    if (( cleanup_errexit_was_on )); then
+      set -e
+    fi
   fi
+
+  return 0
 }
 
 clear_last_download_error() {

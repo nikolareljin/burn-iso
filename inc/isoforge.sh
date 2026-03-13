@@ -39,6 +39,11 @@ fi
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging help dialog file os json deps
+if [[ ! -f "$REPO_ROOT/inc/download-state.sh" ]]; then
+  >&2 printf "Missing required download state helper: %s\n" "$REPO_ROOT/inc/download-state.sh"
+  >&2 printf "Please reinstall burn-iso or restore the missing file and retry.\n"
+  exit 1
+fi
 # shellcheck source=/dev/null
 source "$REPO_ROOT/inc/download-state.sh"
 
