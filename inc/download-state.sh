@@ -83,11 +83,14 @@ print_last_download_error_cli() {
 
 derive_download_output_name() {
   local url="$1"
-  local output
+  local output candidate
 
   output=$(basename -- "$url")
   if [[ "$output" != *.* ]]; then
-    output=$(printf '%s\n' "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
+    candidate=$(printf '%s\n' "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
+    if [[ -n "$candidate" && "$candidate" != *://* && "$candidate" != */* ]]; then
+      output="$candidate"
+    fi
   fi
   printf '%s\n' "$output"
 }
