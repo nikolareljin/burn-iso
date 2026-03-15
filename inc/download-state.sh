@@ -12,7 +12,7 @@ cleanup_tracked_download_log() {
   local log_path="${1:-}"
   local cleanup_errexit_was_on=0
 
-  if [[ "$log_path" == /tmp/isoforge-download.*.log ]] && [[ -f "$log_path" ]]; then
+  if [[ "$log_path" =~ ^/tmp/isoforge-download\.[A-Za-z0-9._-]+\.log$ ]] && [[ -f "$log_path" ]]; then
     if [[ $- == *e* ]]; then
       cleanup_errexit_was_on=1
       set +e
