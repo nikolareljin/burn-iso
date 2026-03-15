@@ -53,6 +53,21 @@ record_last_download_error() {
   LAST_DOWNLOAD_ERROR_RC="${7:-}"
 }
 
+summarize_download_error_message() {
+  local raw="${1:-}"
+  local single_line
+  local limit=200
+
+  single_line=$(printf '%s\n' "$raw" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')
+  if [[ -z "$single_line" ]]; then
+    single_line="No additional error output captured."
+  fi
+  if (( ${#single_line} > limit )); then
+    single_line="${single_line:0:limit-3}..."
+  fi
+  printf '%s\n' "$single_line"
+}
+
 has_last_download_error() {
   [[ -n "${LAST_DOWNLOAD_ERROR_TIME:-}" ]]
 }
@@ -127,6 +142,9 @@ download_file_with_error_tracking() {
         "$log_file" \
         "Failed to create output directory \"$dir\"." \
         "1"
+      if command -v dialog >/dev/null 2>&1; then
+        show_last_download_error_dialog || true
+      fi
       return 1
     fi
   fi
@@ -149,6 +167,9 @@ download_file_with_error_tracking() {
       "$log_file" \
       "Neither curl nor wget is installed." \
       "127"
+    if command -v dialog >/dev/null 2>&1; then
+      show_last_download_error_dialog || true
+    fi
     return 127
   fi
 
@@ -258,7 +279,7 @@ download_file_with_error_tracking() {
       printf '\nFailed to remove temporary download log.\n' >>"$log_file"
     fi
     if [[ -s "$log_file" ]]; then
-      err_preview=$(tail -n 20 "$log_file")
+      err_preview=$(summarize_download_error_message "$(tail -n 20 "$log_file")")
     else
       err_preview="No additional error output captured."
     fi
@@ -279,7 +300,7 @@ download_file_with_error_tracking() {
   rm -f -- "$tmpfile"
   local err_preview
   if [[ -s "$log_file" ]]; then
-    err_preview=$(tail -n 20 "$log_file")
+    err_preview=$(summarize_download_error_message "$(tail -n 20 "$log_file")")
   else
     err_preview="No additional error output captured."
   fi
