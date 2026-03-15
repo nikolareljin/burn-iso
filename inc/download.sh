@@ -22,6 +22,14 @@ fi
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging dialog file os deps
+if [[ -f "$REPO_ROOT/inc/download-state.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$REPO_ROOT/inc/download-state.sh"
+else
+  >&2 printf "Missing required state file: %s\n" "$REPO_ROOT/inc/download-state.sh"
+  >&2 printf "This script appears to be running from a partial or incomplete installation.\n"
+  exit 1
+fi
 
 # Always restore a clean terminal UI when exiting (including Cancel/interrupt)
 reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
@@ -152,6 +160,7 @@ selected=$(dialog --stdout --title "Download ISOs" --checklist "Select one or mo
 selected=$(sed 's/\"//g' <<<"$selected")
 
 pushd "$DOWNLOAD_DIR" >/dev/null
+clear_last_download_error
 errors=0
 for id in $selected; do
   # Skip category headers if user selected them
@@ -169,12 +178,8 @@ for id in $selected; do
     errors=$((errors+1))
     continue
   fi
-  output=$(basename "$url")
-  if [[ "$output" != *.* ]]; then
-    output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
-  fi
-  # Script-helpers handles dialog progress + failure details.
-  if ! download_file "$url" "$output"; then
+  output=$(derive_download_output_name "$url")
+  if ! download_file_with_error_tracking "$url" "$output" "batch-download" "$id"; then
     print_error "Failed to download $id"
     errors=$((errors+1))
   fi
@@ -185,6 +190,9 @@ if [[ "$errors" -eq 0 ]]; then
   print_success "Download completed! Files saved to $DOWNLOAD_DIR"
 else
   print_warning "Completed with $errors error(s). Check logs."
+  if has_last_download_error; then
+    print_last_download_error_cli
+  fi
 fi
 
 # End of script

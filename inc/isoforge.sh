@@ -39,6 +39,13 @@ fi
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging help dialog file os json deps
+if [[ ! -f "$REPO_ROOT/inc/download-state.sh" ]]; then
+  >&2 printf "Missing required download state helper: %s\n" "$REPO_ROOT/inc/download-state.sh"
+  >&2 printf "Please reinstall Isoforge or restore the missing file and retry.\n"
+  exit 1
+fi
+# shellcheck source=/dev/null
+source "$REPO_ROOT/inc/download-state.sh"
 
 # Always restore a clean terminal UI when exiting (including Cancel/interrupt)
 reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
@@ -244,6 +251,9 @@ show_summary() {
   [[ $multi_count -gt 1 ]] && img="${multi_count} images (Ventoy)"
   local bg="${SELECTED_BACKGROUND:-<none>}"
   printf "Images: %s\nDrive: %s\nBackground: %s\n" "$img" "$dev" "$bg"
+  if has_last_download_error; then
+    printf "\n%s\n" "$(last_download_error_summary)"
+  fi
 }
 
 select_image_source() {
@@ -303,7 +313,7 @@ select_images_from_config_multi() {
   SELECTED_IMAGES=()
   local -a skipped_insecure=()
   local -a skipped_unsupported=()
-  local id url output path errs=0
+  local id url output path errs=0 download_failed=0
   for id in $chosen; do
     [[ "$id" == hdr_* ]] && continue
     url=$(jq -r --arg id "$id" '.distros[] | select(.id==$id) | .url' "$CONFIG_FILE")
@@ -318,13 +328,12 @@ select_images_from_config_multi() {
       skipped_insecure+=("$id")
       continue
     fi
-    output=$(basename "$url")
-    if [[ "$output" != *.* ]]; then
-      output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
-    fi
+    output=$(derive_download_output_name "$url")
     if [[ ! -f "$output" ]]; then
-      # Script-helpers handles dialog progress + failure details.
-      download_file "$url" "$output" || errs=$((errs+1))
+      if ! download_file_with_error_tracking "$url" "$output" "multi-download" "$id"; then
+        errs=$((errs+1))
+        download_failed=1
+      fi
     fi
     path="$DOWNLOAD_DIR/$output"
     if [[ -f "$path" ]]; then SELECTED_IMAGES+=("$path"); fi
@@ -332,6 +341,10 @@ select_images_from_config_multi() {
   popd >/dev/null
   if (( errs > 0 )); then
     local detail=""
+    local failure_note="If a download fails, the latest failure remains visible in the main status panel."
+    if (( download_failed == 1 )) && has_last_download_error; then
+      failure_note="The latest download failure remains visible in the main status panel."
+    fi
     if [[ ${#skipped_insecure[@]} -gt 0 ]]; then
       detail="${detail}\nSkipped insecure (HTTP) selections: ${skipped_insecure[*]}"
       detail="${detail}\nHint: set ALLOW_INSECURE_HTTP_DOWNLOADS=1 only if you explicitly accept insecure downloads."
@@ -340,7 +353,7 @@ select_images_from_config_multi() {
       detail="${detail}\nSkipped unsupported URL selections: ${skipped_unsupported[*]}"
     fi
     dialog --title "Download completed with warnings" --msgbox \
-      "Some selected items could not be processed (${errs}).\nThis may be due to missing URLs, unsupported URL schemes, insecure URL rejection, or download failures.\nOnly successfully downloaded files were kept in the selection.${detail}" 14 74
+      "Some selected items could not be processed (${errs}).\nThis may be due to missing URLs, unsupported URL schemes, insecure URL rejection, or download failures.\nOnly successfully downloaded files were kept in the selection.\n\n${failure_note}${detail}" 16 74
   fi
   if [[ ${#SELECTED_IMAGES[@]} -eq 1 ]]; then
     SELECTED_IMAGE="${SELECTED_IMAGES[0]}"
@@ -451,15 +464,10 @@ select_image_from_config() {
 
   pushd "$DOWNLOAD_DIR" >/dev/null
   # Determine output filename (mirrors scripts/lib/file.sh logic)
-  output=$(basename "$url")
-  if [[ "$output" != *.* ]]; then
-    output=$(echo "$url" | sed -E 's|.*/([^/]+\.[^/]+)(/.*)?$|\1|')
-  fi
+  output=$(derive_download_output_name "$url")
 
-  # Script-helpers handles dialog progress + failure details.
-  if ! download_file "$url" "$output"; then
+  if ! download_file_with_error_tracking "$url" "$output" "single-download" "$chosen"; then
     popd >/dev/null
-    dialog --title "Error" --msgbox "Download failed for: $output" 8 50
     return 1
   fi
 
