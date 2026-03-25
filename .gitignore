@@ -34,3 +34,7 @@ debian/*.log
 
 # Local notes
 TODO.txt
+
+# Ignore Claude memory files outside the repo root
+CLAUDE.md
+!/CLAUDE.md
