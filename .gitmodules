@@ -5,4 +5,4 @@
 
 [submodule "image-view"]
 	path = image-view
-	url = git@github.com:nikolareljin/image-view.git
+	url = https://github.com/nikolareljin/image-view.git
