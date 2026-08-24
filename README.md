@@ -269,3 +269,11 @@ Notes
 
 - Flashing may require elevated privileges; tools use `sudo` if available.
 - Progress uses `dd status=progress` and a `dialog` gauge; total percentage is based on ISO size.
+
+---
+
+## Clone traffic
+
+![Clone traffic](https://raw.githubusercontent.com/nikolareljin/stats/main/charts/burn-iso.svg)
+
+_Updated daily. Total and unique cloners over the last 14 days._
