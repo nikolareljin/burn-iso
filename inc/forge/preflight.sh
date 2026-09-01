@@ -50,6 +50,29 @@ forge_check_space() {
   log_info "Work directory $probe has ${free_gib} GiB free."
 }
 
+# Ubuntu images name their architecture in .disk/info; the filename carries it
+# too. Returns nothing when neither says, and the check is then skipped rather
+# than guessed at.
+forge_detect_arch() {
+  local iso_dir="$1" iso_path="$2"
+  local text=""
+
+  [[ -f "$iso_dir/.disk/info" ]] && text="$(cat "$iso_dir/.disk/info")"
+  text+=" $(basename "$iso_path")"
+
+  local a
+  for a in amd64 arm64 i386 armhf ppc64el s390x riscv64; do
+    if [[ "$text" == *"$a"* ]]; then
+      printf '%s' "$a"
+      return 0
+    fi
+  done
+  case "$text" in
+    *x86_64*)  printf 'amd64' ;;
+    *aarch64*) printf 'arm64' ;;
+  esac
+}
+
 # Building for a different architecture than the host would need binfmt and a
 # static qemu in the chroot. Say so plainly rather than failing deep inside apt.
 forge_check_arch() {
@@ -60,7 +83,11 @@ forge_check_arch() {
     x86_64) host_arch="amd64" ;;
     aarch64) host_arch="arm64" ;;
   esac
-  if [[ -n "$iso_arch" && "$iso_arch" != "$host_arch" ]]; then
+  if [[ -z "$iso_arch" ]]; then
+    log_warn "Could not tell the base image's architecture; assuming it matches $host_arch."
+    return 0
+  fi
+  if [[ "$iso_arch" != "$host_arch" ]]; then
     log_error "Base image is $iso_arch but this host is $host_arch."
     log_error "Cross-architecture builds are not supported; run this on an $iso_arch machine."
     return 2

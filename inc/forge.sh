@@ -165,6 +165,7 @@ main() {
   forge_verify_base "$FORGE_BASE_ISO" || exit $?
 
   forge_extract_iso "$FORGE_BASE_ISO" "$iso_dir" || exit $?
+  forge_check_arch "$(forge_detect_arch "$iso_dir" "$FORGE_BASE_ISO")" || exit $?
   forge_detect_layout "$iso_dir" || exit $?
   forge_prepare_root "$WORK_DIR" || exit $?
 
@@ -186,7 +187,7 @@ main() {
   forge_chroot_leave
   forge_root_teardown "$rootfs"
 
-  forge_finalize_tree "$iso_dir" "$volume" || exit $?
+  forge_finalize_tree "$iso_dir" "$volume" "$FORGE_BASE_ISO" || exit $?
   forge_pack "$iso_dir" "$FORGE_BASE_ISO" "$out" "$volume" || exit $?
   forge_verify "$out" || exit $?
 

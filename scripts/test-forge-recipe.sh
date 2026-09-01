@@ -108,6 +108,32 @@ else
   ok "an ansible section with no playbook is rejected"
 fi
 
+# A volume id is substituted into the boot configuration, so it must not carry
+# characters that are special to sed.
+write "$TMP/bad-volid.yml" <<'EOF'
+recipe: t
+base:
+  catalog_id: Xubuntu_24_04_4_desktop_amd64
+output:
+  name: t
+  volume_id: "BAD|LABEL&HERE"
+EOF
+if recipe_load "$TMP/bad-volid.yml" >/dev/null 2>&1; then
+  bad "a volume_id with sed metacharacters is rejected"
+else
+  ok "a volume_id with sed metacharacters is rejected"
+fi
+
+# --- package names are data, not shell --------------------------------------
+# shellcheck source=/dev/null
+source "$REPO_ROOT/inc/forge/customize.sh"
+for good in git curl python3-yaml lib32z1 g++ "nginx=1.2.3" "curl/noble"; do
+  if forge_valid_package_name "$good"; then ok "'$good' is accepted as a package name"; else bad "'$good' is accepted as a package name"; fi
+done
+for evil in 'git; rm -rf /' 'curl $(id)' 'a`id`' 'x|y' './relative' '-rf'; do
+  if forge_valid_package_name "$evil"; then bad "'$evil' is refused as a package name"; else ok "'$evil' is refused as a package name"; fi
+done
+
 # --- reading values ---------------------------------------------------------
 write "$TMP/values.yml" <<'EOF'
 recipe: values

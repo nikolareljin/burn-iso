@@ -44,10 +44,18 @@ Ubuntu and Xubuntu 24.04 and 26.04, amd64. Both casper layouts are handled:
   the build writes into a fresh upperdir. The result is squashed as a new top
   layer and registered in `install-sources.yaml`.
 
+For a layered image, the new layer has to be registered in
+`install-sources.yaml` or the installer keeps using the original layer and
+drops everything the build added. If that file is missing, or its layered
+source cannot be repointed, the build fails rather than writing an image whose
+customizations would be ignored.
+
 An image with no `casper/` directory is refused, naming what was found. Arch is
 not supported: `archiso` shares nothing with casper and needs its own pipeline.
 
-Cross-architecture builds are refused rather than attempted.
+Cross-architecture builds are refused rather than attempted. The architecture
+is read from `.disk/info`, falling back to the image filename; when neither
+says, the check is skipped rather than guessed at.
 
 ## The recipe
 
@@ -65,7 +73,7 @@ base:
 
 output:
   name: nikos-24.04-amd64      # the ISO filename, without .iso
-  volume_id: NIKOS_2404        # at most 32 characters
+  volume_id: NIKOS_2404        # at most 32 of [A-Za-z0-9_.-]
   label: NikOS 24.04
 
 packages:
@@ -90,6 +98,14 @@ hooks:
   chroot:
     - hooks/10-locale.sh     # runs inside the image, as root
 ```
+
+`volume_id` is restricted to letters, digits, underscore, dot and dash because
+it is substituted into the boot configuration, replacing the base image's own
+label so entries that name the volume follow it.
+
+Package names are validated against Debian's naming rules before they reach
+apt, and every value a recipe contributes is shell-quoted on its way into the
+chroot. A recipe is data; it cannot become a command running as root.
 
 Stages run in a fixed order: keys and sources, `apt update`, removals,
 installs, distrodeck, Ansible, overlay, hooks. Sources come first because the

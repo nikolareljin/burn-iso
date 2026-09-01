@@ -9,6 +9,26 @@
 # manager so a recipe's own files win over any package's version of them.
 # Hooks last so they see the finished system.
 
+# Debian policy: lowercase alphanumerics plus + - . , at least two characters.
+# apt also accepts pkg=version and pkg/suite, so those are allowed too.
+forge_valid_package_name() {
+  [[ "$1" =~ ^[a-z0-9][a-z0-9+._-]*([=/][A-Za-z0-9+.:~_-]+)?$ ]]
+}
+
+forge_check_package_names() {
+  local what="$1"; shift
+  local bad=() p
+  for p in "$@"; do
+    [[ -n "$p" ]] || continue
+    forge_valid_package_name "$p" || bad+=("$p")
+  done
+  if ((${#bad[@]})); then
+    log_error "$what contains entries that are not package names: ${bad[*]}"
+    log_error "Refusing to pass them to apt inside the image."
+    return 2
+  fi
+}
+
 forge_apt_keys() {
   local count
   count=$(recipe_get '.sources.keys // [] | length')
@@ -27,7 +47,7 @@ forge_apt_keys() {
       log_error "sources.keys[$i].dest must be an absolute path inside the image: $dest"
       return 2
     fi
-    forge_in_chroot "mkdir -p \"\$(dirname '$dest')\" && curl -fsSL '$url' -o '$dest' && chmod 0644 '$dest'" || {
+    forge_in_chroot "mkdir -p \"\$(dirname $(forge_q "$dest"))\" && curl -fsSL $(forge_q "$url") -o $(forge_q "$dest") && chmod 0644 $(forge_q "$dest")" || {
       log_error "Could not install key $url"
       return 1
     }
@@ -47,7 +67,7 @@ forge_apt_sources() {
     forge_in_chroot "command -v add-apt-repository >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y --no-install-recommends software-properties-common)" || return 1
     for p in "${ppas[@]}"; do
       [[ -n "$p" ]] || continue
-      forge_in_chroot "add-apt-repository -y '$p'" || {
+      forge_in_chroot "add-apt-repository -y $(forge_q "$p")" || {
         log_error "Could not add $p"
         return 1
       }
@@ -60,7 +80,7 @@ forge_apt_sources() {
     forge_in_chroot ": >'$list'" || return 1
     for p in "${sources[@]}"; do
       [[ -n "$p" ]] || continue
-      forge_in_chroot "printf '%s\n' '$p' >>'$list'" || return 1
+      forge_in_chroot "printf '%s\n' $(forge_q "$p") >>$(forge_q "$list")" || return 1
     done
   fi
 }
@@ -76,6 +96,9 @@ forge_apt_packages() {
     return 0
   fi
 
+  forge_check_package_names "packages.install" "${install[@]}" || return $?
+  forge_check_package_names "packages.remove" "${remove[@]}" || return $?
+
   log_info "Refreshing package lists"
   forge_in_chroot "apt-get update -qq" || {
     log_error "apt-get update failed inside the image"
@@ -84,7 +107,7 @@ forge_apt_packages() {
 
   if ((${#remove[@]})); then
     log_info "Removing ${#remove[@]} package(s)"
-    forge_in_chroot "apt-get purge -y ${remove[*]}" || {
+    forge_in_chroot "apt-get purge -y $(forge_q "${remove[@]}")" || {
       log_error "Could not remove: ${remove[*]}"
       return 1
     }
@@ -92,7 +115,7 @@ forge_apt_packages() {
 
   if ((${#install[@]})); then
     log_info "Installing ${#install[@]} package(s)"
-    forge_in_chroot "apt-get install -y --no-install-recommends ${install[*]}" || {
+    forge_in_chroot "apt-get install -y --no-install-recommends $(forge_q "${install[@]}")" || {
       log_error "Could not install: ${install[*]}"
       return 1
     }
@@ -121,10 +144,10 @@ forge_flatpaks() {
       app="$line"
     fi
     [[ -n "$app" ]] || continue
-    forge_in_chroot "flatpak remote-add --system --if-not-exists $remote https://dl.flathub.org/repo/flathub.flatpakrepo" || return 1
+    forge_in_chroot "flatpak remote-add --system --if-not-exists $(forge_q "$remote") https://dl.flathub.org/repo/flathub.flatpakrepo" || return 1
     # --system so the app lands in the image rather than a user home that does
     # not exist yet.
-    forge_in_chroot_soft "flatpak install --system -y $remote $app"
+    forge_in_chroot_soft "flatpak install --system -y $(forge_q "$remote" "$app")"
   done
 }
 
@@ -186,7 +209,7 @@ forge_hooks() {
     staged="/tmp/isoforge-hook-$(basename "$abs")"
     install -m 0755 "$abs" "$rootfs$staged" || return 1
     log_info "  hook: $(basename "$abs")"
-    if ! forge_in_chroot "$staged"; then
+    if ! forge_in_chroot "$(forge_q "$staged")"; then
       log_error "Hook failed: $abs"
       rm -f "$rootfs$staged"
       return 1

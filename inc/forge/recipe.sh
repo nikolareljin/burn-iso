@@ -70,6 +70,10 @@ recipe_validate() {
   if [[ -n "$vol" && ${#vol} -gt 32 ]]; then
     errors+=("output.volume_id: ${#vol} characters; ISO 9660 allows at most 32")
   fi
+  # Also keeps the label safe to substitute into the boot configuration.
+  if [[ -n "$vol" && ! "$vol" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+    errors+=("output.volume_id: only letters, digits, underscore, dot and dash")
+  fi
 
   if recipe_has '.distrodeck'; then
     local export_path

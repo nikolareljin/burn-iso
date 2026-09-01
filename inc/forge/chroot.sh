@@ -65,6 +65,18 @@ forge_chroot_leave() {
   FORGE_CHROOT_DIR=""
 }
 
+# Recipes and distrodeck exports are data, not code. Every value that reaches
+# the chroot shell goes through this first, so a package name carrying shell
+# metacharacters cannot become a command running as root against the host's
+# bound /dev.
+forge_q() {
+  local out="" a
+  for a in "$@"; do
+    out+=" $(printf '%q' "$a")"
+  done
+  printf '%s' "${out# }"
+}
+
 forge_in_chroot() {
   chroot "$FORGE_CHROOT_DIR" /usr/bin/env \
     DEBIAN_FRONTEND=noninteractive \

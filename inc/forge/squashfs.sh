@@ -81,9 +81,13 @@ forge_register_layer() {
   local iso_dir="$1" name="$2"
   local sources="$iso_dir/casper/install-sources.yaml"
 
+  # Without this file the installer has no way to be told about the new layer,
+  # so the image would install the base system and silently drop everything the
+  # build added. That is worse than not producing an image.
   if [[ ! -f "$sources" ]]; then
-    log_warn "No casper/install-sources.yaml; the installer may not see ${name}.squashfs."
-    return 0
+    log_error "This image has layered squashfs but no casper/install-sources.yaml,"
+    log_error "so ${name}.squashfs cannot be registered and would be ignored by the installer."
+    return 1
   fi
 
   log_info "Registering the new layer in install-sources.yaml"
@@ -94,9 +98,11 @@ forge_register_layer() {
     # Leave the original in place rather than writing something the installer
     # might choke on, and say exactly what needs doing by hand.
     mv -f "$sources.isoforge-orig" "$sources"
-    log_warn "Could not repoint install-sources.yaml from '$from' to '$name'."
-    log_warn "Edit it by hand before installing from this image."
-    return 0
+    log_error "Could not repoint install-sources.yaml from '$from' to '$name'."
+    log_error "The installer would keep using '$from' and ignore everything this"
+    log_error "build added, so the image is not written. Edit the file by hand and"
+    log_error "re-run, or report the layout it uses."
+    return 1
   fi
   rm -f "$sources.isoforge-orig"
 }

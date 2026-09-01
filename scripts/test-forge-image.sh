@@ -117,7 +117,7 @@ check "the change survives the repack" "$(cat "$work/verify/etc/isoforge-marker"
 # md5sum.txt is what the "check disc for defects" boot entry verifies; a stale
 # one fails on every rebuilt image.
 before=$(md5sum "$work/iso/md5sum.txt" | awk '{print $1}')
-forge_finalize_tree "$work/iso" "REBUILT" >/dev/null 2>&1
+forge_finalize_tree "$work/iso" "REBUILT" "$base" >/dev/null 2>&1
 after=$(md5sum "$work/iso/md5sum.txt" | awk '{print $1}')
 if [[ "$before" != "$after" ]]; then ok "md5sum.txt is regenerated"; else bad "md5sum.txt is regenerated"; fi
 check ".disk/info carries the new label" "$(cat "$work/iso/.disk/info")" "REBUILT"
@@ -159,6 +159,36 @@ fi
 check "the source now names the new layer" \
   "$(python3 -c 'import sys,yaml; print(yaml.safe_load(open(sys.argv[1]))[0]["path"])' "$work2/iso/casper/install-sources.yaml" 2>/dev/null)" \
   "minimal.standard.isoforge"
+
+# A layered image whose install-sources.yaml cannot be repointed must fail the
+# build: the installer would keep the original layer and drop everything added.
+rm -f "$work2/iso/casper/install-sources.yaml"
+if forge_register_layer "$work2/iso" "minimal.standard.isoforge" >/dev/null 2>&1; then
+  bad "a missing install-sources.yaml fails the build"
+else
+  ok "a missing install-sources.yaml fails the build"
+fi
+
+cat >"$work2/iso/casper/install-sources.yaml" <<'YAML'
+- id: unrelated
+  path: something-else
+YAML
+if forge_register_layer "$work2/iso" "minimal.standard.isoforge" >/dev/null 2>&1; then
+  bad "an install-sources.yaml that cannot be repointed fails the build"
+else
+  ok "an install-sources.yaml that cannot be repointed fails the build"
+fi
+check "the original install-sources.yaml is restored on failure" \
+  "$(python3 -c 'import sys,yaml; print(yaml.safe_load(open(sys.argv[1]))[0]["path"])' "$work2/iso/casper/install-sources.yaml" 2>/dev/null)" \
+  "something-else"
+
+# --- architecture detection -------------------------------------------------
+mkdir -p "$TMP/arch/.disk"
+printf 'Xubuntu 24.04.4 LTS "Noble Numbat" - Release amd64 (20250101)\n' >"$TMP/arch/.disk/info"
+check "the architecture is read from .disk/info" "$(forge_detect_arch "$TMP/arch" /tmp/whatever.iso)" "amd64"
+rm -f "$TMP/arch/.disk/info"
+check "the architecture falls back to the filename" "$(forge_detect_arch "$TMP/arch" /tmp/thing-arm64.iso)" "arm64"
+check "an unknown architecture reads as empty" "$(forge_detect_arch "$TMP/arch" /tmp/mystery.iso)" ""
 
 # --- a base that is not a live image ---------------------------------------
 mkdir -p "$TMP/notlive/tree/random"

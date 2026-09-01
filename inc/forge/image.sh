@@ -31,16 +31,27 @@ forge_boot_args() {
   printf '%s' "$args"
 }
 
-forge_set_volume_id() {
-  local iso_dir="$1" label="$2"
-  [[ -n "$label" ]] || return 0
+# Read the volume id the base image was built with, so the rewrite below can
+# replace exactly that string rather than pattern-matching at what a label
+# might look like.
+forge_base_volume_id() {
+  xorriso -indev "$1" -pvd_info 2>&1 | sed -n "s/^Volume id *: *'\(.*\)'$/\1/p" | head -1
+}
 
-  # The boot menus name the volume they expect to find; if the label moves and
-  # they do not, the live session drops to an initramfs prompt.
+forge_set_volume_id() {
+  local iso_dir="$1" old_label="$2" new_label="$3"
+  [[ -n "$new_label" && -n "$old_label" && "$old_label" != "$new_label" ]] || return 0
+
+  # Boot entries that name the volume have to follow it, or the live session
+  # looks for a label that is no longer there and drops to an initramfs prompt.
+  # recipe_validate has already restricted the label to characters that are
+  # inert to sed, and only the previous label is matched.
   local f
-  for f in "$iso_dir/boot/grub/grub.cfg" "$iso_dir/isolinux/txt.cfg" "$iso_dir/boot/grub/loopback.cfg"; do
+  for f in "$iso_dir/boot/grub/grub.cfg" "$iso_dir/boot/grub/loopback.cfg" \
+           "$iso_dir/isolinux/txt.cfg" "$iso_dir/isolinux/isolinux.cfg" \
+           "$iso_dir/boot/grub/theme/1_ubuntu.cfg"; do
     [[ -f "$f" ]] || continue
-    sed -i "s|\(iso-scan/filename=\|LABEL=\)[^ ]*|\1$label|g" "$f" 2>/dev/null || true
+    sed -i "s/$old_label/$new_label/g" "$f" 2>/dev/null || true
   done
 }
 
@@ -132,8 +143,11 @@ forge_pack() {
 }
 
 forge_finalize_tree() {
-  local iso_dir="$1" label="$2"
+  local iso_dir="$1" label="$2" base_iso="${3:-}"
+  local old_label=""
+  [[ -n "$base_iso" ]] && old_label="$(forge_base_volume_id "$base_iso")"
+
   forge_disk_info "$iso_dir" "$label"
-  forge_set_volume_id "$iso_dir" "$label"
+  forge_set_volume_id "$iso_dir" "$old_label" "$label"
   forge_checksums "$iso_dir" || return $?
 }
