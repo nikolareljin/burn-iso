@@ -17,7 +17,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Replaced the placeholder PPA target in `.github/workflows/main.yml`.
 - `tools/*.sh` gated on the script-helpers helper being executable, but upstream ships `build_brew_tarball.sh`, `gen_brew_formula.sh`, `build_rpm_artifacts.sh` and `publish_homebrew.sh` mode 644. Four of the six wrappers therefore failed with a misleading "script-helpers not initialized" error. They now check for the file and invoke it with `bash`.
 - `tools/build-deb.sh` relied on the helper's default `--prebuild "make man"`, which fails because this repository has no Makefile. It now passes `./tools/gen-man.sh` explicitly.
-- `tools/gen-brew-formula.sh` repairs two defects in the upstream generator: its dependency block reaches the formula with literal `\n` separators, and it names the `bin` shim after `--entrypoint`, producing `bin/"inc/isoforge.sh"` instead of `bin/"isoforge"`. Both are corrected until the helper is fixed upstream.
+- `tools/gen-brew-formula.sh` repairs two defects in the upstream generator: its dependency block reaches the formula with literal `\n` separators, and it names the `bin` shim after `--entrypoint`, producing `bin/"inc/isoforge.sh"` instead of `bin/"isoforge"`. Both are corrected with `awk` and a temporary file, which also works on the macOS hosts that run Homebrew publishing.
 - Added the `packaging/rpm/build/` rpmbuild tree to `.gitignore`; `tools/build-rpm.sh` creates it.
 
 ### Removed

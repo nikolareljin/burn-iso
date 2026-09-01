@@ -10,7 +10,7 @@ shlib_import logging
 helper="$REPO_ROOT/scripts/script-helpers/scripts/ppa_upload.sh"
 if [[ -f "$helper" ]]; then
   "$REPO_ROOT/tools/gen-man.sh"
-  exec "$helper" --repo "$REPO_ROOT" "$@"
+  exec bash "$helper" --repo "$REPO_ROOT" "$@"
 fi
 
 log_error "script-helpers not initialized. Run: git submodule update --init --recursive"

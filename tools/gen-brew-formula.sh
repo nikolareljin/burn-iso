@@ -37,9 +37,15 @@ if [[ -f "$helper" ]]; then
   # script-helpers gen_brew_formula.sh emits the dependency block through a
   # heredoc, so its "\n" separators stay literal, and it names the bin shim
   # after --entrypoint, which yields bin/"inc/isoforge.sh" instead of
-  # bin/"isoforge". Repair both until the helper is fixed upstream.
-  sed -i 's/\\n/\n/g' "$formula"
-  sed -i 's|(bin/"inc/isoforge.sh")|(bin/"isoforge")|' "$formula"
+  # bin/"isoforge". Repair both until the helper is fixed upstream. awk with a
+  # temporary file keeps this working on BSD/macOS, where sed -i needs an
+  # argument and does not expand \n in a replacement.
+  awk '{
+    gsub(/\\n/, "\n")
+    gsub(/\(bin\/"inc\/isoforge\.sh"\)/, "(bin/\"isoforge\")")
+    print
+  }' "$formula" >"$formula.tmp"
+  mv "$formula.tmp" "$formula"
   log_info "Wrote Homebrew formula: $formula"
   exit 0
 fi
