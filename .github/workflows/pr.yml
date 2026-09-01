@@ -11,4 +11,4 @@ jobs:
       # The image tests build and repack a synthetic ISO, so the runner needs
       # xorriso and squashfs-tools. Without them those tests skip rather than
       # fail, which would hide a real regression.
-      test_command: "sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends xorriso squashfs-tools && ./scripts/test-forge-recipe.sh && ./scripts/test-forge-distrodeck.sh && ./scripts/test-forge-image.sh"
+      test_command: "git submodule update --init --recursive && sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends xorriso squashfs-tools && ./scripts/test-forge-recipe.sh && ./scripts/test-forge-distrodeck.sh && ./scripts/test-forge-image.sh"
