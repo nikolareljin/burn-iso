@@ -158,10 +158,10 @@ fi
 # --- package names are data, not shell --------------------------------------
 # shellcheck source=/dev/null
 source "$REPO_ROOT/inc/forge/customize.sh"
-for good in git curl python3-yaml lib32z1 g++ "nginx=1.2.3" "curl/noble"; do
+for good in git curl python3-yaml lib32z1 g++ "nginx=1.2.3" "curl/noble" "libc6:i386" "libgl1:amd64=1.2"; do
   if forge_valid_package_name "$good"; then ok "'$good' is accepted as a package name"; else bad "'$good' is accepted as a package name"; fi
 done
-for evil in 'git; rm -rf /' 'curl $(id)' 'a`id`' 'x|y' './relative' '-rf'; do
+for evil in 'git; rm -rf /' 'curl $(id)' 'a`id`' 'x|y' './relative' '-rf' 'pkg:$(id)' 'a:b:c:d'; do
   if forge_valid_package_name "$evil"; then bad "'$evil' is refused as a package name"; else ok "'$evil' is refused as a package name"; fi
 done
 

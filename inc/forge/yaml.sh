@@ -4,9 +4,10 @@
 #
 # `yq` is ambiguous: the `yq` in the Debian and Ubuntu archives is the Python
 # jq wrapper, while `-o=json` belongs to the unrelated Go implementation, so a
-# recipe that parses on one machine fails on the next. python3 with PyYAML is
-# already required by tools/gen-man.py and is packaged everywhere as
-# python3-yaml, so it is the primary path and the Go yq is only a fallback.
+# recipe that parses on one machine fails on the next. PyYAML has one meaning,
+# ships as python3-yaml in every distribution that matters here, and rides on a
+# python3 the build already needs, so it is the primary path and the Go yq is
+# only a fallback.
 
 forge_yaml_backend() {
   if python3 -c 'import yaml' >/dev/null 2>&1; then

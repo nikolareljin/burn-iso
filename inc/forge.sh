@@ -110,7 +110,7 @@ forge_teardown() {
   set +e
   forge_chroot_leave
   forge_root_teardown "$WORK_DIR/rootfs"
-  if ((rc != 0)) && ((KEEP_WORK == 0)); then
+  if ((rc != 0)); then
     log_warn "Build failed. Work directory left at $WORK_DIR for inspection."
   fi
   return $rc

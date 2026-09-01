@@ -12,11 +12,12 @@
 # Starts with a lowercase letter or digit, then lowercase letters, digits and
 # + - . _ . This is Debian's package-name grammar with underscore also allowed,
 # which is looser than policy but matches what apt accepts in practice. An
-# optional =version or /suite suffix is permitted because apt takes those too.
+# optional :arch qualifier is permitted for multiarch (libc6:i386), and an
+# optional =version or /suite suffix because apt takes those too.
 # Deliberately stricter than "anything without a shell metacharacter": these
 # names reach apt running as root inside the image.
 forge_valid_package_name() {
-  [[ "$1" =~ ^[a-z0-9][a-z0-9+._-]*([=/][A-Za-z0-9+.:~_-]+)?$ ]]
+  [[ "$1" =~ ^[a-z0-9][a-z0-9+._-]*(:[a-z0-9][a-z0-9-]*)?([=/][A-Za-z0-9+.:~_-]+)?$ ]]
 }
 
 forge_check_package_names() {
