@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+# Recipe loading, merging and validation. No root, no network, no base image.
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts/script-helpers}"
+
+if [[ ! -f "$SCRIPT_HELPERS_DIR/helpers.sh" ]]; then
+  echo "script-helpers not initialized; run ./update" >&2
+  exit 2
+fi
+# shellcheck source=/dev/null
+source "$SCRIPT_HELPERS_DIR/helpers.sh"
+shlib_import logging
+# shellcheck source=/dev/null
+source "$REPO_ROOT/inc/forge/yaml.sh"
+# shellcheck source=/dev/null
+source "$REPO_ROOT/inc/forge/recipe.sh"
+
+CONFIG_FILE="$REPO_ROOT/config.json"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+pass=0
+fail=0
+ok()   { printf 'ok   - %s\n' "$1"; pass=$((pass + 1)); }
+bad()  { printf 'FAIL - %s\n' "$1"; fail=$((fail + 1)); }
+check() { if [[ "$2" == "$3" ]]; then ok "$1"; else bad "$1 (expected '$3', got '$2')"; fi; }
+
+write() { mkdir -p "$(dirname "$1")"; cat >"$1"; }
+
+# --- the shipped recipes must load -----------------------------------------
+for r in "$REPO_ROOT"/recipes/*.yml; do
+  case "$r" in *.local.yml) continue ;; esac
+  if recipe_load "$r" >/dev/null 2>&1; then
+    ok "$(basename "$r") loads and validates"
+  else
+    bad "$(basename "$r") does not validate"
+  fi
+done
+
+# --- required fields --------------------------------------------------------
+write "$TMP/no-name.yml" <<'EOF'
+recipe: t
+base:
+  catalog_id: Xubuntu_24_04_4_desktop_amd64
+EOF
+if recipe_load "$TMP/no-name.yml" >/dev/null 2>&1; then
+  bad "a recipe with no output.name is rejected"
+else
+  ok "a recipe with no output.name is rejected"
+fi
+
+write "$TMP/no-base.yml" <<'EOF'
+recipe: t
+output:
+  name: t
+EOF
+if recipe_load "$TMP/no-base.yml" >/dev/null 2>&1; then
+  bad "a recipe with no base is rejected"
+else
+  ok "a recipe with no base is rejected"
+fi
+
+write "$TMP/two-bases.yml" <<'EOF'
+recipe: t
+base:
+  catalog_id: Xubuntu_24_04_4_desktop_amd64
+  url: https://example.invalid/x.iso
+output:
+  name: t
+EOF
+if recipe_load "$TMP/two-bases.yml" >/dev/null 2>&1; then
+  bad "two base sources are rejected"
+else
+  ok "two base sources are rejected"
+fi
+
+# A volume id over 32 bytes is truncated by xorriso, silently disagreeing with
+# the boot entries that name it.
+write "$TMP/long-volid.yml" <<'EOF'
+recipe: t
+base:
+  catalog_id: Xubuntu_24_04_4_desktop_amd64
+output:
+  name: t
+  volume_id: THIS_VOLUME_ID_IS_DEFINITELY_LONGER_THAN_THIRTY_TWO
+EOF
+if recipe_load "$TMP/long-volid.yml" >/dev/null 2>&1; then
+  bad "an over-long volume_id is rejected"
+else
+  ok "an over-long volume_id is rejected"
+fi
+
+# --- an incomplete optional section is an error, not a silent skip ----------
+write "$TMP/bad-ansible.yml" <<'EOF'
+recipe: t
+base:
+  catalog_id: Xubuntu_24_04_4_desktop_amd64
+output:
+  name: t
+ansible:
+  repo: https://example.invalid/x
+EOF
+if recipe_load "$TMP/bad-ansible.yml" >/dev/null 2>&1; then
+  bad "an ansible section with no playbook is rejected"
+else
+  ok "an ansible section with no playbook is rejected"
+fi
+
+# --- reading values ---------------------------------------------------------
+write "$TMP/values.yml" <<'EOF'
+recipe: values
+base:
+  catalog_id: Xubuntu_24_04_4_desktop_amd64
+output:
+  name: values-img
+  volume_id: VALUES
+packages:
+  install: [git, curl]
+  remove: [nano]
+EOF
+recipe_load "$TMP/values.yml" >/dev/null
+check "recipe name is read"          "$(recipe_get '.recipe')"           "values"
+check "output.name is read"          "$(recipe_get '.output.name')"      "values-img"
+check "install list is read"         "$(recipe_list '.packages.install' | paste -sd, -)" "git,curl"
+check "an absent list yields nothing" "$(recipe_list '.flatpak' | wc -l | tr -d ' ')"    "0"
+
+if recipe_has '.packages'; then ok "recipe_has finds a present section"; else bad "recipe_has finds a present section"; fi
+if recipe_has '.ansible'; then bad "recipe_has rejects an absent section"; else ok "recipe_has rejects an absent section"; fi
+
+# --- the local override layer ----------------------------------------------
+write "$TMP/over.yml" <<'EOF'
+recipe: over
+base:
+  catalog_id: Xubuntu_24_04_4_desktop_amd64
+output:
+  name: original
+  volume_id: ORIG
+EOF
+write "$TMP/over.local.yml" <<'EOF'
+output:
+  name: overridden
+  volume_id: ORIG
+EOF
+recipe_load "$TMP/over.yml" >/dev/null
+check "a local layer overrides the tracked recipe" "$(recipe_get '.output.name')" "overridden"
+check "keys the local layer omits survive"         "$(recipe_get '.recipe')"      "over"
+
+# --- catalog resolution -----------------------------------------------------
+# shellcheck source=/dev/null
+source "$REPO_ROOT/inc/forge/fetch.sh"
+if [[ -n "$(forge_catalog_url Xubuntu_24_04_4_desktop_amd64)" ]]; then
+  ok "the Xubuntu 24.04 base resolves from config.json"
+else
+  bad "the Xubuntu 24.04 base resolves from config.json"
+fi
+check "an unknown catalog id resolves to nothing" "$(forge_catalog_url definitely-not-a-distro)" ""
+
+printf '\n%d passed, %d failed\n' "$pass" "$fail"
+[[ "$fail" -eq 0 ]]

@@ -1,0 +1,208 @@
+#!/usr/bin/env bash
+# Everything that changes the base system, in a fixed order:
+#
+#   keys and sources  ->  apt update  ->  remove  ->  install
+#   ->  distrodeck export  ->  ansible  ->  overlay  ->  hooks
+#
+# Sources first because the installs may come from them. Removals before
+# installs so a recipe can replace a package. Overlay after the package
+# manager so a recipe's own files win over any package's version of them.
+# Hooks last so they see the finished system.
+
+forge_apt_keys() {
+  local count
+  count=$(recipe_get '.sources.keys // [] | length')
+  ((count > 0)) || return 0
+
+  log_info "Installing $count apt key(s)"
+  local i url dest
+  for ((i = 0; i < count; i++)); do
+    url=$(recipe_get ".sources.keys[$i].url // \"\"")
+    dest=$(recipe_get ".sources.keys[$i].dest // \"\"")
+    if [[ -z "$url" || -z "$dest" ]]; then
+      log_error "sources.keys[$i] needs both url and dest"
+      return 2
+    fi
+    if [[ "$dest" != /* ]]; then
+      log_error "sources.keys[$i].dest must be an absolute path inside the image: $dest"
+      return 2
+    fi
+    forge_in_chroot "mkdir -p \"\$(dirname '$dest')\" && curl -fsSL '$url' -o '$dest' && chmod 0644 '$dest'" || {
+      log_error "Could not install key $url"
+      return 1
+    }
+  done
+}
+
+forge_apt_sources() {
+  local -a ppas sources
+  mapfile -t ppas < <(recipe_list '.sources.ppas')
+  mapfile -t sources < <(recipe_list '.sources.apt')
+  ppas+=("${FORGE_DD_PPAS[@]}")
+  sources+=("${FORGE_DD_SOURCES[@]}")
+
+  local p
+  if ((${#ppas[@]})); then
+    log_info "Adding ${#ppas[@]} PPA(s)"
+    forge_in_chroot "command -v add-apt-repository >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y --no-install-recommends software-properties-common)" || return 1
+    for p in "${ppas[@]}"; do
+      [[ -n "$p" ]] || continue
+      forge_in_chroot "add-apt-repository -y '$p'" || {
+        log_error "Could not add $p"
+        return 1
+      }
+    done
+  fi
+
+  if ((${#sources[@]})); then
+    log_info "Adding ${#sources[@]} apt source line(s)"
+    local list="/etc/apt/sources.list.d/isoforge.list"
+    forge_in_chroot ": >'$list'" || return 1
+    for p in "${sources[@]}"; do
+      [[ -n "$p" ]] || continue
+      forge_in_chroot "printf '%s\n' '$p' >>'$list'" || return 1
+    done
+  fi
+}
+
+forge_apt_packages() {
+  local -a install remove
+  mapfile -t install < <(recipe_list '.packages.install')
+  mapfile -t remove < <(recipe_list '.packages.remove')
+  install+=("${FORGE_DD_APT[@]}")
+
+  # Nothing to do at all, and no sources were touched either: skip the update.
+  if ((${#install[@]} == 0 && ${#remove[@]} == 0)); then
+    return 0
+  fi
+
+  log_info "Refreshing package lists"
+  forge_in_chroot "apt-get update -qq" || {
+    log_error "apt-get update failed inside the image"
+    return 1
+  }
+
+  if ((${#remove[@]})); then
+    log_info "Removing ${#remove[@]} package(s)"
+    forge_in_chroot "apt-get purge -y ${remove[*]}" || {
+      log_error "Could not remove: ${remove[*]}"
+      return 1
+    }
+  fi
+
+  if ((${#install[@]})); then
+    log_info "Installing ${#install[@]} package(s)"
+    forge_in_chroot "apt-get install -y --no-install-recommends ${install[*]}" || {
+      log_error "Could not install: ${install[*]}"
+      return 1
+    }
+  fi
+
+  forge_in_chroot_soft "apt-get autoremove -y"
+}
+
+forge_flatpaks() {
+  local -a apps
+  mapfile -t apps < <(recipe_list '.flatpak')
+  apps+=("${FORGE_DD_FLATPAK[@]}")
+  ((${#apps[@]})) || return 0
+
+  log_info "Installing ${#apps[@]} flatpak(s)"
+  forge_in_chroot "command -v flatpak >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y --no-install-recommends flatpak)" || return 1
+
+  local line remote app
+  for line in "${apps[@]}"; do
+    [[ -n "$line" ]] || continue
+    if [[ "$line" == *"remote="* ]]; then
+      remote=$(forge_dd_flatpak_fields "$line" remote)
+      app=$(forge_dd_flatpak_fields "$line" app)
+    else
+      remote="flathub"
+      app="$line"
+    fi
+    [[ -n "$app" ]] || continue
+    forge_in_chroot "flatpak remote-add --system --if-not-exists $remote https://dl.flathub.org/repo/flathub.flatpakrepo" || return 1
+    # --system so the app lands in the image rather than a user home that does
+    # not exist yet.
+    forge_in_chroot_soft "flatpak install --system -y $remote $app"
+  done
+}
+
+forge_overlay() {
+  local recipe_dir="$1" rootfs="$2"
+  local count
+  count=$(recipe_get '.overlay // [] | length')
+  ((count > 0)) || return 0
+
+  log_info "Copying $count overlay entr(ies)"
+  local i src dest abs_src
+  for ((i = 0; i < count; i++)); do
+    src=$(recipe_get ".overlay[$i].src // \"\"")
+    dest=$(recipe_get ".overlay[$i].dest // \"\"")
+    if [[ -z "$src" || -z "$dest" ]]; then
+      log_error "overlay[$i] needs both src and dest"
+      return 2
+    fi
+    if [[ "$dest" != /* ]]; then
+      log_error "overlay[$i].dest must be an absolute path inside the image: $dest"
+      return 2
+    fi
+
+    abs_src="$src"
+    [[ "$abs_src" == /* ]] || abs_src="$recipe_dir/$src"
+    if [[ ! -e "$abs_src" ]]; then
+      log_error "overlay[$i].src does not exist: $abs_src"
+      return 2
+    fi
+
+    mkdir -p "$rootfs$(dirname "$dest")"
+    # A trailing slash on the source copies its contents; without one it copies
+    # the directory itself. Normalise to "contents of" for directories.
+    if [[ -d "$abs_src" ]]; then
+      mkdir -p "$rootfs$dest"
+      rsync -a "$abs_src/" "$rootfs$dest/" || return 1
+    else
+      rsync -a "$abs_src" "$rootfs$dest" || return 1
+    fi
+  done
+}
+
+forge_hooks() {
+  local recipe_dir="$1" rootfs="$2"
+  local -a hooks
+  mapfile -t hooks < <(recipe_list '.hooks.chroot')
+  ((${#hooks[@]})) || return 0
+
+  log_info "Running ${#hooks[@]} chroot hook(s)"
+  local h abs staged
+  for h in "${hooks[@]}"; do
+    [[ -n "$h" ]] || continue
+    abs="$h"
+    [[ "$abs" == /* ]] || abs="$recipe_dir/$h"
+    if [[ ! -f "$abs" ]]; then
+      log_error "Hook not found: $abs"
+      return 2
+    fi
+    staged="/tmp/isoforge-hook-$(basename "$abs")"
+    install -m 0755 "$abs" "$rootfs$staged" || return 1
+    log_info "  hook: $(basename "$abs")"
+    if ! forge_in_chroot "$staged"; then
+      log_error "Hook failed: $abs"
+      rm -f "$rootfs$staged"
+      return 1
+    fi
+    rm -f "$rootfs$staged"
+  done
+}
+
+forge_customize() {
+  local recipe_dir="$1" rootfs="$2"
+
+  forge_apt_keys           || return $?
+  forge_apt_sources        || return $?
+  forge_apt_packages       || return $?
+  forge_flatpaks           || return $?
+  forge_ansible "$rootfs"  || return $?
+  forge_overlay "$recipe_dir" "$rootfs" || return $?
+  forge_hooks   "$recipe_dir" "$rootfs" || return $?
+}

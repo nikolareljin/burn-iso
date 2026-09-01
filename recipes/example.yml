@@ -1,0 +1,25 @@
+# A minimal recipe. Everything below `packages` is optional; a recipe with only
+# a base and a package list still produces a working installable image.
+#
+#   sudo ./forge --recipe recipes/example.yml
+#
+recipe: example
+
+base:
+  # An id from the `distros` list in config.json. Use `url:` or `iso:` instead
+  # to build from an image the catalog does not carry.
+  catalog_id: Xubuntu_24_04_4_desktop_amd64
+  # sha256: <checksum of the base image>   # optional, but checked when given
+
+output:
+  name: example-24.04-amd64
+  volume_id: EXAMPLE_2404
+  label: Example 24.04
+
+packages:
+  install:
+    - curl
+    - git
+    - tmux
+  remove:
+    - gnome-mahjongg

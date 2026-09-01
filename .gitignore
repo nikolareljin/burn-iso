@@ -44,3 +44,10 @@ packaging/homebrew/isoforge.rb
 
 # rpmbuild tree created by tools/build-rpm.sh
 packaging/rpm/build/
+
+# Local recipe overrides, merged over the tracked recipe by ./forge
+recipes/*.local.yml
+recipes/*.local.yaml
+
+# Default scratch space for ./forge, when it is pointed inside the repo
+build/isoforge/

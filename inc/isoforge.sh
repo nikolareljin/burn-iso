@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # SCRIPT: isoforge.sh
 # DESCRIPTION: Isoforge TUI for downloading and flashing ISOs to USB, including Ventoy multi-ISO.
-# USAGE: isoforge [--config PATH] [--version] [--help]
+# USAGE: isoforge [build ...] [--config PATH] [--version] [--help]
 # EXAMPLE: isoforge --config ./config.json
+# EXAMPLE: sudo isoforge build --recipe recipes/nikos.yml
 # PARAMETERS:
+#   build [ARGS]   Build a custom ISO from a recipe. Pass --help for its options.
 #   --config PATH  Override config file path.
 #   --version      Print version and exit.
 #   -h, --help     Show help and exit.
@@ -67,6 +69,13 @@ fi
 VERSION="${VERSION:-0.1.0}"
 
 parse_cli_args() {
+  # `isoforge build ...` hands the rest of the command line to the builder, so
+  # the installed CLI is one entry point rather than two.
+  if [[ "${1:-}" == "build" ]]; then
+    shift
+    exec "$REPO_ROOT/inc/forge.sh" "$@"
+  fi
+
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --config)

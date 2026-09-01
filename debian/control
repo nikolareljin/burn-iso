@@ -9,6 +9,7 @@ Rules-Requires-Root: no
 Package: isoforge
 Architecture: all
 Depends: ${misc:Depends}, bash, dialog, curl | wget, jq, coreutils, util-linux
+Recommends: xorriso, squashfs-tools, rsync, python3-yaml
 Description: TUI tool for downloading and flashing ISO images to USB
  Isoforge provides a simple terminal UI for selecting and downloading distros,
  flashing to USB, and creating Ventoy multi-ISO drives.

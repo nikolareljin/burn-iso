@@ -1,5 +1,5 @@
 Name:           isoforge
-Version:        1.1.0
+Version:        2.0.0
 Release:        1%{?dist}
 Summary:        TUI tool for downloading and flashing ISO images to USB
 License:        MIT
@@ -7,10 +7,13 @@ URL:            https://github.com/nikolareljin/iso-forge
 BuildArch:      noarch
 
 Requires:       bash, dialog, curl, jq, coreutils, util-linux
+Recommends:     xorriso, squashfs-tools, rsync, python3-pyyaml
 
 %description
 Isoforge provides a simple terminal UI for selecting and downloading distros,
-flashing to USB, and creating Ventoy multi-ISO drives.
+flashing to USB, and creating Ventoy multi-ISO drives. It also builds custom
+installable images: `isoforge build` remasters an Ubuntu or Xubuntu base image
+from a recipe describing packages, settings and provisioning.
 
 %prep
 %autosetup -n %{name}-%{version}
@@ -20,6 +23,7 @@ mkdir -p %{buildroot}/usr/bin
 mkdir -p %{buildroot}/usr/share/isoforge
 mkdir -p %{buildroot}/usr/share/isoforge/inc
 mkdir -p %{buildroot}/usr/share/isoforge/scripts
+mkdir -p %{buildroot}/usr/share/isoforge/recipes
 mkdir -p %{buildroot}/usr/share/man/man1
 
 install -m 0755 inc/isoforge.sh %{buildroot}/usr/bin/isoforge
@@ -27,6 +31,7 @@ cp -a inc/* %{buildroot}/usr/share/isoforge/inc/
 install -m 0644 config.json %{buildroot}/usr/share/isoforge/config.json
 install -m 0644 VERSION %{buildroot}/usr/share/isoforge/VERSION
 cp -a scripts/* %{buildroot}/usr/share/isoforge/scripts/
+cp -a recipes/* %{buildroot}/usr/share/isoforge/recipes/
 install -m 0644 docs/man/isoforge.1 %{buildroot}/usr/share/man/man1/isoforge.1
 
 %files
@@ -35,6 +40,7 @@ install -m 0644 docs/man/isoforge.1 %{buildroot}/usr/share/man/man1/isoforge.1
 /usr/share/isoforge/config.json
 /usr/share/isoforge/VERSION
 /usr/share/isoforge/scripts
+/usr/share/isoforge/recipes
 /usr/share/man/man1/isoforge.1
 
 %changelog

@@ -37,7 +37,9 @@ if [[ $# -gt 0 ]]; then
 else
   # Include common tools for Ventoy workflow and copying
   # exfatprogs/exfat-utils for mounting Ventoy exFAT, rsync for copy with progress
-  install_dependencies dialog curl jq wget util-linux coreutils rsync exfatprogs exfat-utils parted
+  # xorriso/squashfs-tools/python3-yaml are what `./forge` needs to build an image
+  install_dependencies dialog curl jq wget util-linux coreutils rsync exfatprogs exfat-utils parted \
+    xorriso squashfs-tools python3-yaml
 fi
 
 print_success "Dependencies installed."
