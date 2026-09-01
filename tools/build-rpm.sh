@@ -8,8 +8,8 @@ source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging
 
 helper="$REPO_ROOT/scripts/script-helpers/scripts/build_rpm_artifacts.sh"
-if [[ -x "$helper" ]]; then
-  exec "$helper" \
+if [[ -f "$helper" ]]; then
+  exec bash "$helper" \
     --repo "$REPO_ROOT" \
     --spec "$REPO_ROOT/packaging/isoforge.spec" \
     --prebuild "./tools/gen-man.sh" \

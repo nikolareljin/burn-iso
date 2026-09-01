@@ -8,9 +8,8 @@ source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging
 
 helper="$REPO_ROOT/scripts/script-helpers/scripts/build_deb_artifacts.sh"
-if [[ -x "$helper" ]]; then
-  "$REPO_ROOT/tools/gen-man.sh"
-  exec "$helper" --repo "$REPO_ROOT"
+if [[ -f "$helper" ]]; then
+  exec bash "$helper" --repo "$REPO_ROOT" --prebuild "./tools/gen-man.sh"
 fi
 
 log_error "script-helpers not initialized. Run: git submodule update --init --recursive"

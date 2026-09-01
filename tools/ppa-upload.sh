@@ -8,7 +8,7 @@ source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging
 
 helper="$REPO_ROOT/scripts/script-helpers/scripts/ppa_upload.sh"
-if [[ -x "$helper" ]]; then
+if [[ -f "$helper" ]]; then
   "$REPO_ROOT/tools/gen-man.sh"
   exec "$helper" --repo "$REPO_ROOT" "$@"
 fi

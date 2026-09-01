@@ -8,8 +8,8 @@ source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging
 
 helper="$REPO_ROOT/scripts/script-helpers/scripts/publish_homebrew.sh"
-if [[ -x "$helper" ]]; then
-  exec "$helper" \
+if [[ -f "$helper" ]]; then
+  exec bash "$helper" \
     --formula "${HOMEBREW_FORMULA_PATH:-$REPO_ROOT/packaging/homebrew/isoforge.rb}" \
     --tap-repo "${HOMEBREW_TAP_REPO:-}" \
     --tap-branch "${HOMEBREW_TAP_BRANCH:-main}" \
