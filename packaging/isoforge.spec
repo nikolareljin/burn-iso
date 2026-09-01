@@ -39,7 +39,7 @@ install -m 0644 docs/man/isoforge.1 %{buildroot}/usr/share/man/man1/isoforge.1
 
 %changelog
 * Tue Sep 01 2026 Nikola Reljin <nikola.reljin@gmail.com> - 1.1.0-1
-- Rename the source repository to iso-forge; the package remains isoforge
+- Repoint source repository references to iso-forge; the package remains isoforge
 - Fix the script-helpers path default in inc/burn.sh
 - Align version metadata at 1.1.0
 - Remove unreferenced inc/include.sh and inc/distros.sh

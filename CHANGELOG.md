@@ -7,7 +7,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 2026-09-01
 
 ### Repository
-- Renamed the GitHub repository from `burn-iso` to `iso-forge` so the repository URL, Pages path and published identity match the `isoforge` CLI and package. The CLI, package name, Homebrew formula and man page are unchanged.
+- Repointed every in-repository reference from `burn-iso` to `iso-forge` in preparation for renaming the GitHub repository, so the repository URL, Pages path and published identity will match the `isoforge` CLI and package. The GitHub-side rename itself is a separate step tracked in `docs/REPOSITORY-RENAME.md`; until it lands, `nikolareljin/iso-forge` does not resolve. The CLI, package name, Homebrew formula and man page are unchanged.
 - Updated clone URLs, packaging metadata, workflow inputs, Pages links and the clone-traffic badge to `nikolareljin/iso-forge`.
 
 ### Fixes
