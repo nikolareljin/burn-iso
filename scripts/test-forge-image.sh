@@ -201,6 +201,14 @@ forge_replace_literal "$TMP/subst/meta.cfg" 'a|b&c\d' "SAFE"
 check "a label full of metacharacters is replaced literally" \
   "$(cat "$TMP/subst/meta.cfg")" "SAFE"
 
+# python3 is needed at build time by forge_replace_literal, whichever backend
+# read the recipe, so preflight must name it.
+if printf '%s\n' "${FORGE_REQUIRED_TOOLS[@]}" | grep -qx python3; then
+  ok "preflight requires python3"
+else
+  bad "preflight requires python3"
+fi
+
 # --- architecture detection -------------------------------------------------
 mkdir -p "$TMP/arch/.disk"
 printf 'Xubuntu 24.04.4 LTS "Noble Numbat" - Release amd64 (20250101)\n' >"$TMP/arch/.disk/info"

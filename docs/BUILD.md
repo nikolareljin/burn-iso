@@ -9,6 +9,8 @@ provisioning step on the target machine.
 sudo ./forge --recipe recipes/example.yml
 # or, from an installed package
 sudo isoforge build --recipe /usr/share/isoforge/recipes/example.yml
+# --config means the same thing here as it does for `isoforge`
+sudo ./forge --recipe recipes/example.yml --config /path/to/config.json
 ```
 
 The finished image lands in `download_dir` from `config.json`, so `./isoforge`
@@ -18,8 +20,9 @@ path as anything else.
 ## What it needs
 
 - Root. The build mounts the base image's filesystems and chroots into them.
-- `xorriso`, `squashfs-tools`, `rsync`, `jq`, and PyYAML (`python3-yaml`).
-  `./setup` installs all of them.
+- `xorriso`, `squashfs-tools`, `rsync`, `jq`, `python3` and PyYAML
+  (`python3-yaml`). `./setup` installs all of them. Preflight checks for them
+  before anything is downloaded.
 - About 25 GB free in the work directory, `/var/tmp/isoforge` by default. The
   extracted ISO tree, the unpacked root filesystem, the rebuilt squashfs and
   the output image are all on disk at once.

@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # DESCRIPTION: Build a custom installable ISO from a base image and a recipe.
-# USAGE: forge --recipe PATH [--output DIR] [--work-dir DIR] [--dry-run] [--smoke-test] [--keep] [--version] [--help]
+# USAGE: forge --recipe PATH [--config PATH] [--output DIR] [--work-dir DIR] [--dry-run] [--smoke-test] [--keep] [--version] [--help]
 # PARAMETERS:
 #   -r, --recipe PATH   Recipe to build. Required.
 #   -o, --output DIR    Where to write the ISO. Defaults to download_dir from config.json.
+#       --config PATH   Override the config file the distro catalog is read from.
 #       --work-dir DIR  Scratch space for the build. Defaults to /var/tmp/isoforge.
 #       --dry-run       Resolve and validate the recipe, then stop. Needs no root.
 #       --smoke-test    Boot the finished image under QEMU.
@@ -58,6 +59,9 @@ parse_args() {
     case "$1" in
       -r|--recipe)   RECIPE_PATH="${2:-}"; shift 2 ;;
       -o|--output)   OUTPUT_DIR="${2:-}"; shift 2 ;;
+      # `isoforge build` forwards its arguments here, and `isoforge` documents
+      # --config, so it has to mean the same thing on both sides.
+      --config)      CONFIG_FILE="${2:-}"; shift 2 ;;
       --work-dir)    WORK_DIR="${2:-}"; shift 2 ;;
       --dry-run)     DRY_RUN=1; shift ;;
       --smoke-test)  SMOKE_TEST=1; shift ;;
@@ -71,6 +75,11 @@ parse_args() {
   if [[ -z "$RECIPE_PATH" ]]; then
     log_error "A recipe is required. Try: forge --recipe recipes/example.yml"
     usage
+    exit 2
+  fi
+
+  if [[ ! -f "$CONFIG_FILE" ]]; then
+    log_error "Config file not found: $CONFIG_FILE"
     exit 2
   fi
 }

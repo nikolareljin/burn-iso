@@ -3,7 +3,10 @@
 
 # Tools the remaster path cannot work without. Kept separate from the flashing
 # dependencies in inc/setup.sh so a burn-only install stays small.
-FORGE_REQUIRED_TOOLS=(xorriso unsquashfs mksquashfs rsync jq awk)
+# python3 is not only the YAML backend: forge_replace_literal uses it for the
+# volume-id rewrite whichever backend read the recipe, so a build cannot get
+# far without it.
+FORGE_REQUIRED_TOOLS=(xorriso unsquashfs mksquashfs rsync jq awk python3)
 
 # Rough worst case for an Ubuntu desktop base: the extracted ISO tree, the
 # unpacked root filesystem, the rebuilt squashfs and the output image all live
@@ -21,7 +24,7 @@ forge_check_tools() {
   done
   if ((${#missing[@]})); then
     log_error "Missing required tool(s): ${missing[*]}"
-    log_error "On Debian and Ubuntu: apt-get install xorriso squashfs-tools rsync jq"
+    log_error "On Debian and Ubuntu: apt-get install xorriso squashfs-tools rsync jq python3 python3-yaml"
     return 2
   fi
 }
