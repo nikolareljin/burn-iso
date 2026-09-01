@@ -2,7 +2,3 @@
 	path = scripts/script-helpers
 	url = https://github.com/nikolareljin/script-helpers.git
 	branch = production
-
-[submodule "image-view"]
-	path = image-view
-	url = https://github.com/nikolareljin/image-view.git

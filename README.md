@@ -7,18 +7,18 @@ Simple shell scripts for downloading popular Linux ISOs and burning them to a US
 
 Repository
 
-- GitHub (SSH): git@github.com:nikolareljin/burn-iso.git
-- GitHub (HTTPS): https://github.com/nikolareljin/burn-iso.git
+- GitHub (SSH): git@github.com:nikolareljin/iso-forge.git
+- GitHub (HTTPS): https://github.com/nikolareljin/iso-forge.git
 
 Important: Clone With Submodules
 
 - This repo uses a Git submodule in `./scripts/script-helpers` for shared helpers. Clone with `--recurse-submodules`.
 - Fresh clone (SSH):
-  - `git clone --recurse-submodules git@github.com:nikolareljin/burn-iso.git`
-  - `cd burn-iso`
+  - `git clone --recurse-submodules git@github.com:nikolareljin/iso-forge.git`
+  - `cd iso-forge`
 - Fresh clone (HTTPS):
-  - `git clone --recurse-submodules https://github.com/nikolareljin/burn-iso.git`
-  - `cd burn-iso`
+  - `git clone --recurse-submodules https://github.com/nikolareljin/iso-forge.git`
+  - `cd iso-forge`
 - If you already cloned without submodules:
   - `git submodule sync --recursive`
   - `git submodule update --init --recursive`
@@ -68,11 +68,11 @@ Submodule Layout
 Clone With Submodules
 
 - Fresh clone (SSH):
-  - `git clone --recurse-submodules git@github.com:nikolareljin/burn-iso.git`
-  - `cd burn-iso`
+  - `git clone --recurse-submodules git@github.com:nikolareljin/iso-forge.git`
+  - `cd iso-forge`
 - Fresh clone (HTTPS):
-  - `git clone --recurse-submodules https://github.com/nikolareljin/burn-iso.git`
-  - `cd burn-iso`
+  - `git clone --recurse-submodules https://github.com/nikolareljin/iso-forge.git`
+  - `cd iso-forge`
 - If already cloned without submodules:
   - `git submodule sync --recursive`
   - `git submodule update --init --recursive`
@@ -274,6 +274,6 @@ Notes
 
 ## Clone traffic
 
-![Clone traffic](https://raw.githubusercontent.com/nikolareljin/stats/main/charts/burn-iso.svg)
+![Clone traffic](https://raw.githubusercontent.com/nikolareljin/stats/main/charts/iso-forge.svg)
 
 _Updated daily. Total and unique cloners over the last 14 days._

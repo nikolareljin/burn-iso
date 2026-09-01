@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning when applicable.
 
+## 2026-09-01
+
+### Repository
+- Renamed the GitHub repository from `burn-iso` to `iso-forge` so the repository URL, Pages path and published identity match the `isoforge` CLI and package. The CLI, package name, Homebrew formula and man page are unchanged.
+- Updated clone URLs, packaging metadata, workflow inputs, Pages links and the clone-traffic badge to `nikolareljin/iso-forge`.
+
+### Fixes
+- `inc/burn.sh` now defaults `SCRIPT_HELPERS_DIR` to `scripts/script-helpers`, matching every other entrypoint. `./burn` previously exited with a missing-helpers error on a correctly initialized clone.
+- Version metadata is aligned at `1.1.0` across `VERSION`, `debian/changelog` and `packaging/isoforge.spec`, which had drifted to `0.1.0-1`.
+- The Homebrew formula and `tools/gen-brew-formula.sh` now build release URLs from bare `X.Y.Z` tags instead of a `v`-prefixed tag that is never created.
+- Replaced the placeholder PPA target in `.github/workflows/main.yml`.
+
+### Removed
+- Deleted the unreferenced `inc/include.sh` and `inc/distros.sh`. Their distro tables were superseded by `config.json`, and `is_valid_iso` resolves from `scripts/script-helpers/lib/file.sh`.
+- Dropped the stale `image-view` entry from `.gitmodules`; it had no gitlink in the index and collided with the path `ensure_image_view_available` downloads into.
+
 ## 2026-03-11
 
 ### TUI

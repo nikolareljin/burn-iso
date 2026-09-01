@@ -16,11 +16,11 @@ if [[ -x "$helper" ]]; then
     exit 2
   fi
 
-  url="${TARBALL_URL:-https://github.com/nikolareljin/burn-iso/releases/download/v$version/isoforge-$version.tar.gz}"
+  url="${TARBALL_URL:-https://github.com/nikolareljin/iso-forge/releases/download/$version/isoforge-$version.tar.gz}"
   exec "$helper" \
     --name "isoforge" \
     --desc "TUI tool for downloading and flashing ISO images to USB" \
-    --homepage "https://github.com/nikolareljin/burn-iso" \
+    --homepage "https://github.com/nikolareljin/iso-forge" \
     --license "MIT" \
     --tarball "$tarball" \
     --url "$url" \

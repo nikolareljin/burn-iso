@@ -12,7 +12,7 @@ elif [[ -f "$SCRIPT_DIR/../config.json" && -d "$SCRIPT_DIR/../scripts/script-hel
 else
   REPO_ROOT="$SCRIPT_DIR"
 fi
-SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts}"
+SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts/script-helpers}"
 
 if [[ ! -f "$SCRIPT_HELPERS_DIR/helpers.sh" ]]; then
   >&2 printf "Missing required helper library: %s\n" "$SCRIPT_HELPERS_DIR/helpers.sh"

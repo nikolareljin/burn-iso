@@ -1,7 +1,7 @@
 class Isoforge < Formula
   desc "TUI tool for downloading and flashing ISO images to USB"
-  homepage "https://github.com/nikolareljin/burn-iso"
-  url "https://github.com/nikolareljin/burn-iso/releases/download/v1.0.0/isoforge-1.0.0.tar.gz"
+  homepage "https://github.com/nikolareljin/iso-forge"
+  url "https://github.com/nikolareljin/iso-forge/releases/download/1.1.0/isoforge-1.1.0.tar.gz"
   version "1.0.0"
   sha256 "346e8d52d2f7b2394ae7dcd962518e2736232f04c8c25e6bd3d8df94ca45bfa9"
   license "MIT"

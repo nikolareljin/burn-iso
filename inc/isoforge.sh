@@ -241,7 +241,7 @@ ensure_dialog() {
   }
 }
 
-title() { echo "Isoforge (CLI) — burn-iso"; }
+title() { echo "Isoforge (CLI) — iso-forge"; }
 
 show_summary() {
   local img="${SELECTED_IMAGE:-<not selected>}"
