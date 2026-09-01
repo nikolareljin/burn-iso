@@ -63,16 +63,26 @@ recipe_validate() {
 
   [[ "$(recipe_get '.output.name // ""')" != "" ]] || errors+=("output.name: required, the ISO filename without .iso")
 
-  # A volume id longer than 32 bytes is silently truncated by xorriso, which
-  # then disagrees with the boot entries that name it.
-  local vol
+  # The build falls back to output.label when volume_id is absent, so the rules
+  # below apply to whichever value ends up on the image. A label like
+  # "NikOS 24.04" is fine as a label and not fine as a volume id, and the error
+  # names the field to set.
+  local vol field
   vol=$(recipe_get '.output.volume_id // ""')
-  if [[ -n "$vol" && ${#vol} -gt 32 ]]; then
-    errors+=("output.volume_id: ${#vol} characters; ISO 9660 allows at most 32")
+  field="output.volume_id"
+  if [[ -z "$vol" ]]; then
+    vol=$(recipe_get '.output.label // ""')
+    field="output.label (used as the volume id because output.volume_id is not set)"
   fi
-  # Also keeps the label safe to substitute into the boot configuration.
+
+  # Over 32 bytes is silently truncated by xorriso, which then disagrees with
+  # the boot entries naming it.
+  if [[ -n "$vol" && ${#vol} -gt 32 ]]; then
+    errors+=("$field: ${#vol} characters; ISO 9660 allows at most 32")
+  fi
+  # Restricted so it is inert where it is substituted into the boot config.
   if [[ -n "$vol" && ! "$vol" =~ ^[A-Za-z0-9_.-]+$ ]]; then
-    errors+=("output.volume_id: only letters, digits, underscore, dot and dash")
+    errors+=("$field: only letters, digits, underscore, dot and dash; set output.volume_id explicitly if the label needs spaces")
   fi
 
   if recipe_has '.distrodeck'; then

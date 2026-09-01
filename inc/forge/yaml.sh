@@ -93,3 +93,23 @@ with open(path, "w") as fh:
     yaml.safe_dump(doc, fh, default_flow_style=False, sort_keys=False)
 PY
 }
+
+# Replace every occurrence of one string with another, literally. Base volume
+# ids routinely carry dots and spaces ("Ubuntu 24.04.3 LTS amd64"), which as a
+# sed pattern would match text the label does not, and any delimiter appearing
+# in the label would end the expression outright.
+forge_replace_literal() {
+  local path="$1" old="$2" new="$3"
+  [[ -f "$path" && -n "$old" ]] || return 0
+
+  python3 - "$path" "$old" "$new" <<'PYEOF'
+import sys
+
+path, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(path, encoding="utf-8", errors="surrogateescape") as fh:
+    text = fh.read()
+if old in text:
+    with open(path, "w", encoding="utf-8", errors="surrogateescape") as fh:
+        fh.write(text.replace(old, new))
+PYEOF
+}

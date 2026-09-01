@@ -29,13 +29,16 @@ forge_ansible() {
     return 1
   }
 
-  forge_in_chroot "rm -rf '$dest' && git clone --depth 1 ${ref:+--branch '$ref'} --recurse-submodules '$repo' '$dest'" || {
+  local clone="rm -rf $(forge_q "$dest") && git clone --depth 1"
+  [[ -n "$ref" ]] && clone+=" --branch $(forge_q "$ref")"
+  clone+=" --recurse-submodules $(forge_q "$repo" "$dest")"
+  forge_in_chroot "$clone" || {
     log_error "Could not clone $repo${ref:+ at $ref}"
     return 1
   }
 
   # Requirements are optional; a playbook with no collections still works.
-  forge_in_chroot_soft "cd '$dest' && [ -f requirements.yml ] && ansible-galaxy collection install -r requirements.yml || true"
+  forge_in_chroot_soft "cd $(forge_q "$dest") && [ -f requirements.yml ] && ansible-galaxy collection install -r requirements.yml || true"
 
   local -a args=()
   local skel_home
@@ -64,7 +67,7 @@ forge_ansible() {
 
   # --connection=local because the chroot is the target; ansible must not try
   # to ssh anywhere.
-  local cmd="cd '$dest' && ansible-playbook '$playbook' -i '$inventory' --connection=local"
+  local cmd="cd $(forge_q "$dest") && ansible-playbook $(forge_q "$playbook") -i $(forge_q "$inventory") --connection=local"
   local a
   for a in "${args[@]}"; do
     cmd+=" $(printf '%q' "$a")"

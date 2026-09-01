@@ -182,6 +182,25 @@ check "the original install-sources.yaml is restored on failure" \
   "$(python3 -c 'import sys,yaml; print(yaml.safe_load(open(sys.argv[1]))[0]["path"])' "$work2/iso/casper/install-sources.yaml" 2>/dev/null)" \
   "something-else"
 
+# --- the volume id rewrite is literal ---------------------------------------
+# A real base volume id looks like "Ubuntu 24.04.3 LTS amd64": as a regex those
+# dots match anything, and a delimiter in the label would end the expression.
+mkdir -p "$TMP/subst"
+cat >"$TMP/subst/grub.cfg" <<'CFG'
+linux /casper/vmlinuz boot=casper LABEL=Ubuntu 24.04.3 LTS amd64 quiet
+# UbuntuX24Y04Z3 LTS amd64 must not be touched
+CFG
+forge_replace_literal "$TMP/subst/grub.cfg" "Ubuntu 24.04.3 LTS amd64" "REBUILT"
+check "the exact label is replaced" \
+  "$(grep -c 'LABEL=REBUILT' "$TMP/subst/grub.cfg")" "1"
+check "text the dots would have matched is untouched" \
+  "$(grep -c 'UbuntuX24Y04Z3' "$TMP/subst/grub.cfg")" "1"
+
+printf 'a|b&c\\d\n' >"$TMP/subst/meta.cfg"
+forge_replace_literal "$TMP/subst/meta.cfg" 'a|b&c\d' "SAFE"
+check "a label full of metacharacters is replaced literally" \
+  "$(cat "$TMP/subst/meta.cfg")" "SAFE"
+
 # --- architecture detection -------------------------------------------------
 mkdir -p "$TMP/arch/.disk"
 printf 'Xubuntu 24.04.4 LTS "Noble Numbat" - Release amd64 (20250101)\n' >"$TMP/arch/.disk/info"

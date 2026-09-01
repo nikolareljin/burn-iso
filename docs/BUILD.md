@@ -99,9 +99,12 @@ hooks:
     - hooks/10-locale.sh     # runs inside the image, as root
 ```
 
-`volume_id` is restricted to letters, digits, underscore, dot and dash because
-it is substituted into the boot configuration, replacing the base image's own
-label so entries that name the volume follow it.
+`volume_id` is restricted to letters, digits, underscore, dot and dash, and to
+32 characters, because it is substituted into the boot configuration, replacing
+the base image's own label so entries naming the volume follow it. When
+`volume_id` is absent the build falls back to `label`, so the same rules apply
+to `label` in that case: `label: NikOS 24.04` needs an explicit `volume_id`
+beside it.
 
 Package names are validated against Debian's naming rules before they reach
 apt, and every value a recipe contributes is shell-quoted on its way into the
@@ -189,7 +192,9 @@ to stay readable at its path for the whole build, because that report names it.
 
 The work directory is left in place. Every mount the build made is released on
 the way out, including on failure, so `/proc` and `/sys` are never left bound
-inside it. Add `--keep` to keep the directory after a successful build too.
+inside it. Add `--keep` to keep the scratch directories after a successful
+build too; the downloaded base image stays in `<work-dir>/cache` either way, so
+the next build of the same base does not re-download it.
 
 ```bash
 sudo ./forge --recipe recipes/example.yml --work-dir /mnt/big/isoforge --keep

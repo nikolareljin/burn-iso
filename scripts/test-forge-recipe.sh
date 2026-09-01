@@ -124,6 +124,37 @@ else
   ok "a volume_id with sed metacharacters is rejected"
 fi
 
+# output.label is used as the volume id when volume_id is absent, so the same
+# rules have to reach it.
+write "$TMP/label-as-volid.yml" <<'EOF'
+recipe: t
+base:
+  catalog_id: Xubuntu_24_04_4_desktop_amd64
+output:
+  name: t
+  label: NikOS 24.04
+EOF
+if recipe_load "$TMP/label-as-volid.yml" >/dev/null 2>&1; then
+  bad "a label with spaces standing in for volume_id is rejected"
+else
+  ok "a label with spaces standing in for volume_id is rejected"
+fi
+
+write "$TMP/label-plus-volid.yml" <<'EOF'
+recipe: t
+base:
+  catalog_id: Xubuntu_24_04_4_desktop_amd64
+output:
+  name: t
+  label: NikOS 24.04
+  volume_id: NIKOS_2404
+EOF
+if recipe_load "$TMP/label-plus-volid.yml" >/dev/null 2>&1; then
+  ok "a spaced label is fine once volume_id is set"
+else
+  bad "a spaced label is fine once volume_id is set"
+fi
+
 # --- package names are data, not shell --------------------------------------
 # shellcheck source=/dev/null
 source "$REPO_ROOT/inc/forge/customize.sh"

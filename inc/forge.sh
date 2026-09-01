@@ -200,7 +200,9 @@ main() {
   fi
 
   if ((KEEP_WORK == 0)); then
-    log_info "Removing the work directory"
+    # The downloaded base image stays in cache/: it is expensive to fetch and
+    # the next build of the same base reuses it.
+    log_info "Removing the build scratch directories; the downloaded base image is kept in $WORK_DIR/cache"
     forge_chroot_leave
     rm -rf "${WORK_DIR:?}/rootfs" "${WORK_DIR:?}/iso" "${WORK_DIR:?}/upper" \
            "${WORK_DIR:?}/layers" "${WORK_DIR:?}/overlay-work"

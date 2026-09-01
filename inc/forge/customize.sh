@@ -9,8 +9,12 @@
 # manager so a recipe's own files win over any package's version of them.
 # Hooks last so they see the finished system.
 
-# Debian policy: lowercase alphanumerics plus + - . , at least two characters.
-# apt also accepts pkg=version and pkg/suite, so those are allowed too.
+# Starts with a lowercase letter or digit, then lowercase letters, digits and
+# + - . _ . This is Debian's package-name grammar with underscore also allowed,
+# which is looser than policy but matches what apt accepts in practice. An
+# optional =version or /suite suffix is permitted because apt takes those too.
+# Deliberately stricter than "anything without a shell metacharacter": these
+# names reach apt running as root inside the image.
 forge_valid_package_name() {
   [[ "$1" =~ ^[a-z0-9][a-z0-9+._-]*([=/][A-Za-z0-9+.:~_-]+)?$ ]]
 }

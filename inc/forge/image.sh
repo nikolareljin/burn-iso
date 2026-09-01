@@ -44,14 +44,14 @@ forge_set_volume_id() {
 
   # Boot entries that name the volume have to follow it, or the live session
   # looks for a label that is no longer there and drops to an initramfs prompt.
-  # recipe_validate has already restricted the label to characters that are
-  # inert to sed, and only the previous label is matched.
+  # The replacement is literal; see forge_replace_literal for why.
   local f
   for f in "$iso_dir/boot/grub/grub.cfg" "$iso_dir/boot/grub/loopback.cfg" \
            "$iso_dir/isolinux/txt.cfg" "$iso_dir/isolinux/isolinux.cfg" \
            "$iso_dir/boot/grub/theme/1_ubuntu.cfg"; do
     [[ -f "$f" ]] || continue
-    sed -i "s/$old_label/$new_label/g" "$f" 2>/dev/null || true
+    forge_replace_literal "$f" "$old_label" "$new_label" \
+      || log_warn "Could not rewrite the volume id in $f"
   done
 }
 
