@@ -19,6 +19,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - `tools/build-deb.sh` relied on the helper's default `--prebuild "make man"`, which fails because this repository has no Makefile. It now passes `./tools/gen-man.sh` explicitly.
 - `tools/gen-brew-formula.sh` repairs two defects in the upstream generator: its dependency block reaches the formula with literal `\n` separators, and it names the `bin` shim after `--entrypoint`, producing `bin/"inc/isoforge.sh"` instead of `bin/"isoforge"`. Both are corrected with `awk` and a temporary file, which also works on the macOS hosts that run Homebrew publishing.
 - Added the `packaging/rpm/build/` rpmbuild tree to `.gitignore`; `tools/build-rpm.sh` creates it.
+- Every `tools/*.sh` wrapper sourced `helpers.sh` before checking that the submodule was initialized. Under `set -e` that aborted with a bare shell error and the friendly message at the bottom was unreachable. The check now runs first, and the helper check is an early guard rather than a trailing branch.
+- The `brew` job now passes an explicit `tarball_url`. `ci-helpers/homebrew-package.yml` defaults to a `v`-prefixed tag while `ci-helpers/auto-tag-release.yml` creates bare `X.Y.Z` tags, so the published formula pointed at a URL that does not exist.
+- `README.md` no longer describes `image-view` as a submodule of this repository.
 
 ### Removed
 - Deleted the unreferenced `inc/include.sh` and `inc/distros.sh`. Their distro tables were superseded by `config.json`, and `is_valid_iso` resolves from `scripts/script-helpers/lib/file.sh`.

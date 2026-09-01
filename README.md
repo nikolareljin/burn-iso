@@ -137,7 +137,7 @@ Multi-ISO with Ventoy
 Background Image & Preview
 
 - The tool will attempt to auto-download a matching `image-view` release binary for your OS/arch from GitHub if none is found.
-- If you prefer to manage it yourself, the repo is also added as a submodule; you can build and place the binary at `image-view/image-view`.
+- If you prefer to manage it yourself, build [image-view](https://github.com/nikolareljin/image-view) separately and place the binary at `image-view/image-view`. It is not a submodule of this repository.
 - In `./isoforge`, choose “Select Ventoy Background”, pick a `jpg/png/tga`, preview it, and it will be installed as a Ventoy theme background.
 
 Ventoy Requirements
