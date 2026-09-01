@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SCRIPT: isoforge.sh
-# DESCRIPTION: Isoforge TUI for downloading and flashing ISOs to USB, including Ventoy multi-ISO.
+# DESCRIPTION: Isoforge downloads Linux images, writes them to USB (single image or Ventoy multi-ISO), and builds custom installable ISOs from a recipe.
 # USAGE: isoforge [build ...] [--config PATH] [--version] [--help]
 # EXAMPLE: isoforge --config ./config.json
 # EXAMPLE: sudo isoforge build --recipe recipes/nikos.yml

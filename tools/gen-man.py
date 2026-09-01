@@ -28,7 +28,10 @@ def parse_header(script_path: Path) -> dict:
                 current = "example"
                 continue
             if line.startswith("#"):
-                if current == "parameters" and re.match(r"#\s+\-\-", line):
+                # Any indented entry under PARAMETERS, so subcommands and short
+                # options reach the page too, not only --long ones. The renderer
+                # below splits each on its first run of two or more spaces.
+                if current == "parameters" and re.match(r"#\s{2,}\S", line):
                     data["parameters"].append(line.lstrip("# ").rstrip())
                 continue
             if not line.startswith("#!") and line.strip():
@@ -75,7 +78,11 @@ def main() -> None:
     lines = [
         f'.TH ISOFORGE 1 "{date}" "isoforge {version}" "User Commands"',
         ".SH NAME",
-        "isoforge \\- TUI for downloading and flashing ISOs to USB, including Ventoy multi-ISO.",
+        # A one-line summary, from the same DESCRIPTION the section below uses,
+        # so the page cannot describe two different tools. NAME convention is
+        # "name \\- summary", so a leading program name in the description is
+        # dropped rather than repeated.
+        f"isoforge \\- {re.sub(r'^isoforge\s+', '', description.split('. ')[0].rstrip('.'), flags=re.I)}",
         ".SH SYNOPSIS",
         ".B isoforge",
         usage.replace("isoforge", "").strip(),

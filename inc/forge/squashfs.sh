@@ -71,7 +71,39 @@ forge_repack_layered() {
   size=$(du -sx --block-size=1 "$upper" | cut -f1)
   printf '%s' "$size" >"$casper/${name}.size"
 
+  forge_carry_sidecars "$casper" "$stem" "$name" || return $?
   forge_register_layer "$iso_dir" "$name" || return $?
+}
+
+# install-sources.yaml names a layer by stem, and the installer looks for that
+# stem's sidecar files too. The manifest in particular decides what a minimal
+# install removes, so a repointed layer with no manifest, or with the base
+# layer's stale one, gets minimal installs wrong.
+forge_carry_sidecars() {
+  local casper="$1" stem="$2" name="$3"
+
+  # The manifest describes the whole stack as it now stands, so it is read from
+  # the merged view rather than copied. This runs while the chroot is still up.
+  if forge_in_chroot "dpkg-query -W --showformat='\${Package} \${Version}\n'" >"$casper/${name}.manifest" 2>/dev/null; then
+    log_info "Wrote ${name}.manifest from the finished system"
+  else
+    rm -f "$casper/${name}.manifest"
+    if [[ -f "$casper/${stem}.manifest" ]]; then
+      log_warn "Could not read the package list; carrying ${stem}.manifest over unchanged."
+      cp -a "$casper/${stem}.manifest" "$casper/${name}.manifest"
+    else
+      log_warn "No package manifest for ${name}; a minimal install may keep packages it would otherwise remove."
+    fi
+  fi
+
+  # The remove lists say which packages a minimal install strips. They describe
+  # the vendor's own selection, so they are carried over as they are.
+  local suffix src
+  for suffix in manifest-remove manifest-minimal-remove size-minimal; do
+    src="$casper/${stem}.${suffix}"
+    [[ -f "$src" ]] || continue
+    cp -a "$src" "$casper/${name}.${suffix}"
+  done
 }
 
 # install-sources.yaml is what the installer reads to find the filesystem it

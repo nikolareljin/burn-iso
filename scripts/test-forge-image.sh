@@ -19,7 +19,7 @@ fi
 # shellcheck source=/dev/null
 source "$SCRIPT_HELPERS_DIR/helpers.sh"
 shlib_import logging file
-for m in yaml recipe preflight fetch extract squashfs image verify; do
+for m in yaml recipe preflight fetch extract chroot squashfs image verify; do
   # shellcheck source=/dev/null
   source "$REPO_ROOT/inc/forge/$m.sh"
 done
@@ -200,6 +200,24 @@ printf 'a|b&c\\d\n' >"$TMP/subst/meta.cfg"
 forge_replace_literal "$TMP/subst/meta.cfg" 'a|b&c\d' "SAFE"
 check "a label full of metacharacters is replaced literally" \
   "$(cat "$TMP/subst/meta.cfg")" "SAFE"
+
+# A repointed layer needs its own sidecar files. The manifest decides what a
+# minimal install removes, so a missing or stale one gets minimal installs
+# wrong; the vendor's remove lists are carried over as they are.
+casper2="$work2/iso/casper"
+printf 'base-pkg 1.0\n' >"$casper2/minimal.standard.manifest"
+printf 'ubiquity\n'      >"$casper2/minimal.standard.manifest-remove"
+printf 'casper\n'        >"$casper2/minimal.standard.manifest-minimal-remove"
+# No chroot here, so dpkg-query cannot run and the fallback path is what is
+# exercised: the previous manifest is carried over rather than left missing.
+FORGE_CHROOT_DIR=""
+forge_carry_sidecars "$casper2" "minimal.standard" "minimal.standard.isoforge" >/dev/null 2>&1
+check "the new layer gets a manifest" \
+  "$([[ -f "$casper2/minimal.standard.isoforge.manifest" ]] && echo yes || echo no)" "yes"
+check "the remove list is carried over" \
+  "$(cat "$casper2/minimal.standard.isoforge.manifest-remove" 2>/dev/null)" "ubiquity"
+check "the minimal remove list is carried over" \
+  "$(cat "$casper2/minimal.standard.isoforge.manifest-minimal-remove" 2>/dev/null)" "casper"
 
 # python3 is needed at build time by forge_replace_literal, whichever backend
 # read the recipe, so preflight must name it.

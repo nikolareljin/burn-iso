@@ -53,6 +53,12 @@ drops everything the build added. If that file is missing, or its layered
 source cannot be repointed, the build fails rather than writing an image whose
 customizations would be ignored.
 
+The new layer also gets its own sidecar files, because the installer looks them
+up by stem. Its `.manifest` is regenerated from the finished system, since that
+manifest is what a minimal install consults to decide what to remove; the
+vendor's `.manifest-remove` and `.manifest-minimal-remove` lists are carried
+over unchanged.
+
 An image with no `casper/` directory is refused, naming what was found. Arch is
 not supported: `archiso` shares nothing with casper and needs its own pipeline.
 
