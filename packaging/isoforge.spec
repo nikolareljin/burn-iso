@@ -7,7 +7,7 @@ URL:            https://github.com/nikolareljin/iso-forge
 BuildArch:      noarch
 
 Requires:       bash, dialog, curl, jq, coreutils, util-linux
-Recommends:     xorriso, squashfs-tools, rsync, python3-pyyaml
+Recommends:     xorriso, squashfs-tools, rsync, python3dist(pyyaml)
 
 %description
 Isoforge provides a simple terminal UI for selecting and downloading distros,

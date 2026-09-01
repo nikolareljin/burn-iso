@@ -20,9 +20,10 @@ path as anything else.
 ## What it needs
 
 - Root. The build mounts the base image's filesystems and chroots into them.
-- `xorriso`, `squashfs-tools`, `rsync`, `jq`, `python3` and PyYAML
-  (`python3-yaml`). `./setup` installs all of them. Preflight checks for them
-  before anything is downloaded.
+- `xorriso`, `squashfs-tools`, `rsync`, `jq`, `python3` and PyYAML.
+  `./setup` installs all of them, and preflight checks for them before anything
+  is downloaded. PyYAML's package name varies: `python3-yaml` on Debian and
+  Ubuntu, `python3dist(pyyaml)` on RPM distributions.
 - About 25 GB free in the work directory, `/var/tmp/isoforge` by default. The
   extracted ISO tree, the unpacked root filesystem, the rebuilt squashfs and
   the output image are all on disk at once.

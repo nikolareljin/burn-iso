@@ -4,10 +4,11 @@
 #
 # `yq` is ambiguous: the `yq` in the Debian and Ubuntu archives is the Python
 # jq wrapper, while `-o=json` belongs to the unrelated Go implementation, so a
-# recipe that parses on one machine fails on the next. PyYAML has one meaning,
-# ships as python3-yaml in every distribution that matters here, and rides on a
-# python3 the build already needs, so it is the primary path and the Go yq is
-# only a fallback.
+# recipe that parses on one machine fails on the next. PyYAML has one meaning
+# wherever it is packaged, and rides on a python3 the build already needs, so
+# it is the primary path and the Go yq is only a fallback. The package name
+# does vary: python3-yaml on Debian and Ubuntu, python3dist(pyyaml) as the RPM
+# virtual provide, python3-PyYAML on openSUSE.
 
 forge_yaml_backend() {
   if python3 -c 'import yaml' >/dev/null 2>&1; then
@@ -23,7 +24,7 @@ forge_yaml_require() {
   local backend
   backend=$(forge_yaml_backend)
   if [[ "$backend" == "none" ]]; then
-    log_error "Reading a recipe needs PyYAML. On Debian and Ubuntu: apt-get install python3-yaml"
+    log_error "Reading a recipe needs PyYAML (python3-yaml on Debian and Ubuntu, python3dist(pyyaml) on RPM distros)."
     log_error "The Go yq (github.com/mikefarah/yq) also works; the yq in the distribution archives does not."
     return 2
   fi
