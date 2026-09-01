@@ -48,7 +48,7 @@ forge_detect_layout() {
 
   if [[ ! -d "$casper" ]]; then
     log_error "No casper/ directory in the base image."
-    log_error "iso-forge remasters Debian-family live images (Ubuntu, Xubuntu, Debian live)."
+    log_error "isoforge remasters Debian-family live images (Ubuntu, Xubuntu, Debian live)."
     log_error "Found at the top level: $(ls -1 "$iso_dir" | paste -sd' ' -)"
     return 2
   fi

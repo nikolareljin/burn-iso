@@ -178,7 +178,7 @@ forge_overlay() {
   count=$(recipe_get '.overlay // [] | length')
   ((count > 0)) || return 0
 
-  log_info "Copying $count overlay entr(ies)"
+  log_info "Copying $count overlay entries"
   local i src dest abs_src
   for ((i = 0; i < count; i++)); do
     src=$(recipe_get ".overlay[$i].src // \"\"")
