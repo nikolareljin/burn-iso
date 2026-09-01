@@ -111,7 +111,10 @@ apt, and every value a recipe contributes is shell-quoted on its way into the
 chroot. A recipe is data; it cannot become a command running as root.
 
 Stages run in a fixed order: keys and sources, `apt update`, removals,
-installs, distrodeck, Ansible, overlay, hooks. Sources come first because the
+installs, distrodeck, Ansible, overlay, hooks. The update runs whenever sources
+changed, even with no packages to install, because that update is what proves a
+new source line or key works; a broken one fails the build rather than the
+first machine installed from the image. Sources come first because the
 installs may come from them; removals precede installs so a recipe can replace
 a package; the overlay lands after the package manager so your files win; hooks
 run last so they see the finished system.

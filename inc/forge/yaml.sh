@@ -59,7 +59,14 @@ forge_yaml_repoint_source() {
   local path="$1" from="$2" to="$3"
   local backend
   backend=$(forge_yaml_require) || return $?
-  [[ "$backend" == "python" ]] || return 1
+  if [[ "$backend" != "python" ]]; then
+    # Reading a recipe works with either backend; rewriting install-sources.yaml
+    # in place is only implemented for PyYAML. Say that, rather than letting the
+    # caller report it as a layout problem.
+    log_error "Editing install-sources.yaml needs PyYAML, and only the Go yq is available."
+    log_error "On Debian and Ubuntu: apt-get install python3-yaml"
+    return 2
+  fi
 
   python3 - "$path" "$from" "$to" <<'PY'
 import sys, yaml

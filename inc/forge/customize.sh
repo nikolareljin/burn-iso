@@ -33,6 +33,23 @@ forge_check_package_names() {
   fi
 }
 
+# apt-get update is run at most once, but it has to run whenever sources
+# changed even if no package is being installed: that update is what proves a
+# new source line or key actually works, and a broken one should fail the build
+# rather than the first machine installed from the image.
+FORGE_APT_UPDATED=0
+
+forge_apt_update() {
+  ((FORGE_APT_UPDATED)) && return 0
+  log_info "Refreshing package lists"
+  forge_in_chroot "apt-get update -qq" || {
+    log_error "apt-get update failed inside the image. A source or key added by"
+    log_error "this recipe is likely wrong."
+    return 1
+  }
+  FORGE_APT_UPDATED=1
+}
+
 forge_apt_keys() {
   local count
   count=$(recipe_get '.sources.keys // [] | length')
@@ -81,11 +98,16 @@ forge_apt_sources() {
   if ((${#sources[@]})); then
     log_info "Adding ${#sources[@]} apt source line(s)"
     local list="/etc/apt/sources.list.d/isoforge.list"
-    forge_in_chroot ": >'$list'" || return 1
+    forge_in_chroot ": >$(forge_q "$list")" || return 1
     for p in "${sources[@]}"; do
       [[ -n "$p" ]] || continue
       forge_in_chroot "printf '%s\n' $(forge_q "$p") >>$(forge_q "$list")" || return 1
     done
+  fi
+
+  # Whatever was added, prove it resolves now.
+  if ((${#ppas[@]} || ${#sources[@]})); then
+    forge_apt_update || return 1
   fi
 }
 
@@ -95,7 +117,6 @@ forge_apt_packages() {
   mapfile -t remove < <(recipe_list '.packages.remove')
   install+=("${FORGE_DD_APT[@]}")
 
-  # Nothing to do at all, and no sources were touched either: skip the update.
   if ((${#install[@]} == 0 && ${#remove[@]} == 0)); then
     return 0
   fi
@@ -103,11 +124,7 @@ forge_apt_packages() {
   forge_check_package_names "packages.install" "${install[@]}" || return $?
   forge_check_package_names "packages.remove" "${remove[@]}" || return $?
 
-  log_info "Refreshing package lists"
-  forge_in_chroot "apt-get update -qq" || {
-    log_error "apt-get update failed inside the image"
-    return 1
-  }
+  forge_apt_update || return 1
 
   if ((${#remove[@]})); then
     log_info "Removing ${#remove[@]} package(s)"

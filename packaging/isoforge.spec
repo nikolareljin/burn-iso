@@ -44,6 +44,13 @@ install -m 0644 docs/man/isoforge.1 %{buildroot}/usr/share/man/man1/isoforge.1
 /usr/share/man/man1/isoforge.1
 
 %changelog
+* Tue Sep 01 2026 Nikola Reljin <nikola.reljin@gmail.com> - 2.0.0-1
+- Add `isoforge build`, which remasters an Ubuntu or Xubuntu base image into a
+  custom installable ISO from a recipe
+- Recipes describe packages, apt sources, overlay files and chroot hooks, and
+  can drive a NikOS Ansible playbook or read a distrodeck export
+- Ship the example recipes and recommend xorriso, squashfs-tools and PyYAML
+
 * Tue Sep 01 2026 Nikola Reljin <nikola.reljin@gmail.com> - 1.1.0-1
 - Repoint source repository references to iso-forge; the package remains isoforge
 - Fix the script-helpers path default in inc/burn.sh
