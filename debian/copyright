@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: isoforge
-Source: https://github.com/nikolareljin/burn-iso
+Source: https://github.com/nikolareljin/iso-forge
 
 Files: *
 Copyright: 2026 Nikola Reljin

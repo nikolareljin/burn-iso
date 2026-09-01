@@ -2,7 +2,7 @@
 
 ## Intent
 
-The repository will be renamed from `burn-iso` to `iso-forge` so its GitHub
+The repository is being renamed from `burn-iso` to `iso-forge` so its GitHub
 name, clone URL and GitHub Pages path match the existing IsoForge CLI and
 package name. This is a repository and URL migration only: the `isoforge`
 command and package identity remain unchanged.
@@ -29,8 +29,18 @@ command and package identity remain unchanged.
 - Debian metadata, RPM spec, Homebrew formula/generator and release tarball
   URLs.
 - GitHub Actions workflow configuration, release targets and Pages links.
-- References in every owned repository, including NikOS, distrodeck and the
-  shared tool-suite navigation.
+- References in every owned repository, including NikOS, distrodeck,
+  kiosk-frame, ai-runner, ci-helpers, script-helpers, keystone, repo-sentinel
+  and the shared tool-suite navigation.
 
-Live progress belongs in the keystone issue created from its backlog item;
-this document intentionally records the migration contract rather than status.
+## In-repository status
+
+Steps 1, 2 and the in-repository half of step 4 are complete as of 1.1.0: every
+reference in this repository names `nikolareljin/iso-forge`, and the `isoforge`
+CLI, package, Homebrew formula and man page are untouched.
+
+Step 3, the GitHub-side rename, has not happened yet, so `nikolareljin/iso-forge`
+does not resolve until it does. Step 5 and the downstream reference migration in
+other repositories are still outstanding. Live progress belongs in the keystone
+issue created from its backlog item; this document records the migration
+contract rather than status.

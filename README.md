@@ -7,18 +7,18 @@ Simple shell scripts for downloading popular Linux ISOs and burning them to a US
 
 Repository
 
-- GitHub (SSH): git@github.com:nikolareljin/burn-iso.git
-- GitHub (HTTPS): https://github.com/nikolareljin/burn-iso.git
+- GitHub (SSH): git@github.com:nikolareljin/iso-forge.git
+- GitHub (HTTPS): https://github.com/nikolareljin/iso-forge.git
 
 Important: Clone With Submodules
 
 - This repo uses a Git submodule in `./scripts/script-helpers` for shared helpers. Clone with `--recurse-submodules`.
 - Fresh clone (SSH):
-  - `git clone --recurse-submodules git@github.com:nikolareljin/burn-iso.git`
-  - `cd burn-iso`
+  - `git clone --recurse-submodules git@github.com:nikolareljin/iso-forge.git`
+  - `cd iso-forge`
 - Fresh clone (HTTPS):
-  - `git clone --recurse-submodules https://github.com/nikolareljin/burn-iso.git`
-  - `cd burn-iso`
+  - `git clone --recurse-submodules https://github.com/nikolareljin/iso-forge.git`
+  - `cd iso-forge`
 - If you already cloned without submodules:
   - `git submodule sync --recursive`
   - `git submodule update --init --recursive`
@@ -68,11 +68,11 @@ Submodule Layout
 Clone With Submodules
 
 - Fresh clone (SSH):
-  - `git clone --recurse-submodules git@github.com:nikolareljin/burn-iso.git`
-  - `cd burn-iso`
+  - `git clone --recurse-submodules git@github.com:nikolareljin/iso-forge.git`
+  - `cd iso-forge`
 - Fresh clone (HTTPS):
-  - `git clone --recurse-submodules https://github.com/nikolareljin/burn-iso.git`
-  - `cd burn-iso`
+  - `git clone --recurse-submodules https://github.com/nikolareljin/iso-forge.git`
+  - `cd iso-forge`
 - If already cloned without submodules:
   - `git submodule sync --recursive`
   - `git submodule update --init --recursive`
@@ -137,7 +137,7 @@ Multi-ISO with Ventoy
 Background Image & Preview
 
 - The tool will attempt to auto-download a matching `image-view` release binary for your OS/arch from GitHub if none is found.
-- If you prefer to manage it yourself, the repo is also added as a submodule; you can build and place the binary at `image-view/image-view`.
+- If you prefer to manage it yourself, build [image-view](https://github.com/nikolareljin/image-view) separately and place the binary at `image-view/image-view`. It is not a submodule of this repository.
 - In `./isoforge`, choose “Select Ventoy Background”, pick a `jpg/png/tga`, preview it, and it will be installed as a Ventoy theme background.
 
 Ventoy Requirements
@@ -274,6 +274,6 @@ Notes
 
 ## Clone traffic
 
-![Clone traffic](https://raw.githubusercontent.com/nikolareljin/stats/main/charts/burn-iso.svg)
+![Clone traffic](https://raw.githubusercontent.com/nikolareljin/stats/main/charts/iso-forge.svg)
 
 _Updated daily. Total and unique cloners over the last 14 days._

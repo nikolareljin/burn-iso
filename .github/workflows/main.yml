@@ -4,6 +4,18 @@ on:
     branches: [ main ]
 
 jobs:
+  # ci-helpers/homebrew-package.yml defaults its tarball URL to a v-prefixed
+  # tag, but ci-helpers/auto-tag-release.yml creates bare X.Y.Z tags. Read
+  # VERSION here so the brew job can be given the URL that actually exists.
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: read
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
   deb:
     uses: nikolareljin/ci-helpers/.github/workflows/deb-build.yml@production
     with:
@@ -17,7 +29,7 @@ jobs:
     with:
       working_directory: "."
       prebuild_command: "git submodule update --init --recursive && ./tools/gen-man.sh"
-      ppa_target: "ppa:your-launchpad-id/isoforge"
+      ppa_target: "ppa:nikolareljin/isoforge"
       deb_fullname: "Nikola Reljin"
       deb_email: "nikola.reljin@gmail.com"
       signing_key_id: ${{ vars.PPA_GPG_KEY_ID }}
@@ -35,19 +47,21 @@ jobs:
       artifact_glob: "dist/*.rpm"
 
   brew:
+    needs: version
     uses: nikolareljin/ci-helpers/.github/workflows/homebrew-package.yml@production
     with:
       working_directory: "."
       prebuild_command: "git submodule update --init --recursive && ./tools/gen-man.sh"
       name: "isoforge"
       desc: "TUI tool for downloading and flashing ISO images to USB"
-      homepage: "https://github.com/nikolareljin/burn-iso"
+      homepage: "https://github.com/nikolareljin/iso-forge"
       deps: "dialog,jq,curl"
       entrypoint: "inc/isoforge.sh"
       man_path: "docs/man/isoforge.1"
       use_libexec: "true"
       env_var: "ISOFORGE_ROOT"
-      release_repo: "nikolareljin/burn-iso"
+      release_repo: "nikolareljin/iso-forge"
+      tarball_url: "https://github.com/nikolareljin/iso-forge/releases/download/${{ needs.version.outputs.version }}/isoforge-${{ needs.version.outputs.version }}.tar.gz"
       exclude_paths: ".git,.github,dist,.deps_install.log,.tmp_config.json,.mockbin,test_downloads"
       publish: ${{ vars.HOMEBREW_PUBLISH_ENABLED }}
       tap_repo: ${{ vars.HOMEBREW_TAP_REPO }}
