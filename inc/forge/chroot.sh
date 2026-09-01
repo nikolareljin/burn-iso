@@ -27,10 +27,17 @@ forge_chroot_enter() {
 
   # The image ships a resolv.conf pointing at the live session's resolver.
   # Keep it and restore it, or the built system inherits the build host's.
-  if [[ -e "$rootfs/etc/resolv.conf" ]]; then
+  #
+  # On Ubuntu that file is a symlink into /run/systemd/resolve, and /run is
+  # bind-mounted from the host by the loop above. Writing through the symlink
+  # would therefore land on the *host's* resolver configuration, so the link is
+  # removed first and replaced with a plain file. cp -a copies the link itself
+  # rather than its target, so the backup restores what was there.
+  if [[ -e "$rootfs/etc/resolv.conf" || -L "$rootfs/etc/resolv.conf" ]]; then
     FORGE_RESOLV_BACKUP="$rootfs/etc/resolv.conf.isoforge-orig"
     cp -a "$rootfs/etc/resolv.conf" "$FORGE_RESOLV_BACKUP" 2>/dev/null || FORGE_RESOLV_BACKUP=""
   fi
+  rm -f "$rootfs/etc/resolv.conf"
   cp -f /etc/resolv.conf "$rootfs/etc/resolv.conf" 2>/dev/null || true
 
   # Without this, installing a package starts its daemon on the build host's
@@ -50,7 +57,10 @@ forge_chroot_leave() {
     FORGE_POLICY_RC=""
   fi
 
-  if [[ -n "$FORGE_RESOLV_BACKUP" && -e "$FORGE_RESOLV_BACKUP" ]]; then
+  if [[ -n "$FORGE_RESOLV_BACKUP" ]] && [[ -e "$FORGE_RESOLV_BACKUP" || -L "$FORGE_RESOLV_BACKUP" ]]; then
+    # Remove first for the same reason: the file being restored may be a
+    # symlink, and mv onto an existing symlink would follow it.
+    rm -f "$rootfs/etc/resolv.conf"
     mv -f "$FORGE_RESOLV_BACKUP" "$rootfs/etc/resolv.conf"
     FORGE_RESOLV_BACKUP=""
   fi

@@ -33,9 +33,16 @@ forge_write_manifest() {
 
   if [[ -f "$casper/${stem}.manifest" ]] || [[ -f "$casper/filesystem.manifest" ]]; then
     log_info "Regenerating the package manifest"
-    forge_in_chroot "dpkg-query -W --showformat='\${Package} \${Version}\n'" >"$casper/${stem}.manifest" 2>/dev/null || {
+    # Through a temporary file: a redirection straight onto the manifest
+    # truncates it before dpkg-query runs, so a failure would leave an empty
+    # one behind and "leaving the previous one" would be a lie.
+    local tmp="$casper/${stem}.manifest.isoforge-new"
+    if forge_in_chroot "dpkg-query -W --showformat='\${Package} \${Version}\n'" >"$tmp" 2>/dev/null && [[ -s "$tmp" ]]; then
+      mv -f "$tmp" "$casper/${stem}.manifest"
+    else
+      rm -f "$tmp"
       log_warn "Could not regenerate ${stem}.manifest; leaving the previous one."
-    }
+    fi
   fi
 }
 
@@ -84,10 +91,12 @@ forge_carry_sidecars() {
 
   # The manifest describes the whole stack as it now stands, so it is read from
   # the merged view rather than copied. This runs while the chroot is still up.
-  if forge_in_chroot "dpkg-query -W --showformat='\${Package} \${Version}\n'" >"$casper/${name}.manifest" 2>/dev/null; then
+  local tmp="$casper/${name}.manifest.isoforge-new"
+  if forge_in_chroot "dpkg-query -W --showformat='\${Package} \${Version}\n'" >"$tmp" 2>/dev/null && [[ -s "$tmp" ]]; then
+    mv -f "$tmp" "$casper/${name}.manifest"
     log_info "Wrote ${name}.manifest from the finished system"
   else
-    rm -f "$casper/${name}.manifest"
+    rm -f "$tmp"
     if [[ -f "$casper/${stem}.manifest" ]]; then
       log_warn "Could not read the package list; carrying ${stem}.manifest over unchanged."
       cp -a "$casper/${stem}.manifest" "$casper/${name}.manifest"

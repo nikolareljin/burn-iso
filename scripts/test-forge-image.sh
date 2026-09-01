@@ -212,6 +212,10 @@ printf 'casper\n'        >"$casper2/minimal.standard.manifest-minimal-remove"
 # exercised: the previous manifest is carried over rather than left missing.
 FORGE_CHROOT_DIR=""
 forge_carry_sidecars "$casper2" "minimal.standard" "minimal.standard.isoforge" >/dev/null 2>&1
+check "a failed manifest read leaves no partial file behind" \
+  "$([[ -f "$casper2/minimal.standard.isoforge.manifest.isoforge-new" ]] && echo yes || echo no)" "no"
+check "the carried manifest is the previous one, not an empty file" \
+  "$(cat "$casper2/minimal.standard.isoforge.manifest" 2>/dev/null)" "base-pkg 1.0"
 check "the new layer gets a manifest" \
   "$([[ -f "$casper2/minimal.standard.isoforge.manifest" ]] && echo yes || echo no)" "yes"
 check "the remove list is carried over" \
