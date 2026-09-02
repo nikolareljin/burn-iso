@@ -268,6 +268,21 @@ rm -f "$TMP/arch/.disk/info"
 check "the architecture falls back to the filename" "$(forge_detect_arch "$TMP/arch" /tmp/thing-arm64.iso)" "arm64"
 check "an unknown architecture reads as empty" "$(forge_detect_arch "$TMP/arch" /tmp/mystery.iso)" ""
 
+# xorriso's report contains `-e '--interval:...'` for the EFI boot image, and a
+# bare -e in xargs input comes out as an empty field, which left the interval as
+# a positional argument and made xorriso refuse the whole command.
+mapfile -t split_args < <(printf -- "-eltorito-alt-boot\n-e '--interval:x:all::'\n-no-emul-boot\n" | python3 -c 'import shlex,sys
+for word in shlex.split(sys.stdin.read()):
+    print(word)')
+check "a bare -e survives argument splitting" "${split_args[1]}" "-e"
+check "its quoted value stays one word"       "${split_args[2]}" "--interval:x:all::"
+check "nothing is lost"                       "${#split_args[@]}" "4"
+if grep -q 'xargs -n1' "$REPO_ROOT/inc/forge/image.sh"; then
+  bad "the pack step no longer splits arguments with xargs"
+else
+  ok "the pack step no longer splits arguments with xargs"
+fi
+
 # --- the chroot must not inherit the build host's environment ---------------
 # A real build failed because NVM_DIR from a CI runner reached the chroot and
 # pointed an installer at a host path. Anything not on the allow-list below

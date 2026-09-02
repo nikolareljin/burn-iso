@@ -88,9 +88,16 @@ forge_pack() {
   local -a args=()
   case "$rc" in
     0)
-      # xorriso single-quotes paths in its report; xargs unquotes them the same
-      # way, so a path with spaces survives the round trip.
-      mapfile -t args < <(xargs -n1 <<<"$reported")
+      # Split the report into words the way a shell would, honouring the single
+      # quotes xorriso puts around paths.
+      #
+      # Not with xargs: a bare `-e` in its input comes out as an empty field,
+      # and xorriso's report contains exactly that, `-e '--interval:...'` for
+      # the EFI boot image. The empty field left the interval as a positional
+      # argument and xorriso refused the whole command.
+      mapfile -t args < <(printf '%s' "$reported" | python3 -c 'import shlex,sys
+for word in shlex.split(sys.stdin.read()):
+    print(word)')
       ;;
     3)
       # Nothing to reproduce. A non-bootable base gives a non-bootable output,
