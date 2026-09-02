@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning when applicable.
 
-## 2026-09-02 — 2.0.1
+## 2026-09-01 — 2.0.1
 
 ### Fixed
 - **The release workflow had never run.** GitHub validates a called workflow's declared permissions against what the caller grants, before any job starts. `ci-helpers/deb-build.yml` declares `contents: write`, this repository's default workflow permission is `read`, and `.github/workflows/main.yml` granted nothing, so every push to `main` was rejected with a startup failure and the deb, PPA, RPM and Homebrew jobs never executed. Going back through the run history, `Main` has failed on every commit since March and produced no package at any point. The workflow now grants `contents: read` by default and `contents: write` only to the job whose callee asks for it.

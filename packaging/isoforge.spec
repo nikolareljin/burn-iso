@@ -44,7 +44,7 @@ install -m 0644 docs/man/isoforge.1 %{buildroot}/usr/share/man/man1/isoforge.1
 /usr/share/man/man1/isoforge.1
 
 %changelog
-* Tue Sep 02 2026 Nikola Reljin <nikola.reljin@gmail.com> - 2.0.1-1
+* Tue Sep 01 2026 Nikola Reljin <nikola.reljin@gmail.com> - 2.0.1-1
 - Grant the release workflow the permissions its called workflows declare, so
   the deb, PPA, RPM and Homebrew jobs can run at all
 
@@ -61,5 +61,5 @@ install -m 0644 docs/man/isoforge.1 %{buildroot}/usr/share/man/man1/isoforge.1
 - Align version metadata at 1.1.0
 - Remove unreferenced inc/include.sh and inc/distros.sh
 
-* Thu Jan 09 2026 Nikola Reljin <nikola.reljin@gmail.com> - 0.1.0-1
+* Fri Jan 09 2026 Nikola Reljin <nikola.reljin@gmail.com> - 0.1.0-1
 - Initial release
