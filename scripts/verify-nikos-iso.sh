@@ -85,6 +85,12 @@ if [[ -f "$casper/filesystem.squashfs" ]]; then
   layers=("$casper/filesystem.squashfs")
   ok "root filesystem found: filesystem.squashfs"
 elif [[ -f "$sources" ]]; then
+  if ! python3 -c 'import yaml' >/dev/null 2>&1; then
+    bad "PyYAML is available to read install-sources.yaml"
+    echo "     install python3-yaml (Debian/Ubuntu) or python3dist(pyyaml) (RPM)" >&2
+    printf '\n%d passed, %d failed\n' "$pass" "$fail"
+    exit 1
+  fi
   stem=$(python3 - "$sources" <<'PY'
 import sys, yaml
 doc = yaml.safe_load(open(sys.argv[1]))

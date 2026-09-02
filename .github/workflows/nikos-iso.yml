@@ -116,10 +116,13 @@ jobs:
         env:
           ISO: ${{ steps.build.outputs.iso }}
         run: |
-          # Unpacking the image and its layers needs room; /tmp is not the
-          # place for it.
+          # Unpacking the image and its layers needs room, and /tmp is not the
+          # place for it. Run unprivileged with TMPDIR set: sudo resets the
+          # environment by default, so `sudo TMPDIR=... cmd` would silently
+          # drop it and extract to /tmp anyway. Nothing here needs root.
           sudo mkdir -p /mnt/verify
-          sudo TMPDIR=/mnt/verify ./scripts/verify-nikos-iso.sh "$ISO"
+          sudo chown "$USER" /mnt/verify
+          TMPDIR=/mnt/verify ./scripts/verify-nikos-iso.sh "$ISO"
 
       # Proves the firmware hands off to a bootloader. It does not prove the
       # installer completes, and the job says so rather than implying otherwise.
