@@ -7,7 +7,7 @@ jobs:
   gate:
     uses: nikolareljin/ci-helpers/.github/workflows/ci.yml@production
     with:
-      build_command: "./tools/gen-man.sh && git diff --exit-code docs/man/isoforge.1 && bash -n inc/isoforge.sh inc/burn.sh inc/download.sh inc/setup.sh inc/forge.sh inc/forge/*.sh scripts/verify-nikos-iso.sh"
+      build_command: "./tools/gen-man.sh && git diff --exit-code docs/man/isoforge.1 && bash -n inc/cli-help.sh inc/isoforge.sh inc/burn.sh inc/download.sh inc/setup.sh inc/forge.sh inc/forge/*.sh scripts/verify-nikos-iso.sh"
       # The image tests build and repack a synthetic ISO, so the runner needs
       # xorriso and squashfs-tools; without them those tests skip rather than
       # fail, which would hide a real regression. python3-yaml is what reads a
