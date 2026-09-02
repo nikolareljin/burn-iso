@@ -89,16 +89,22 @@ jobs:
       - name: Collect evidence from a failed build
         if: failure()
         run: |
+          # On the layered layout, rootfs is an overlay mount that teardown has
+          # already released, so it is empty by now. Everything the build wrote
+          # is in the upperdir, which survives.
+          up=/mnt/isoforge/upper
           root=/mnt/isoforge/rootfs
-          [ -d "$root" ] || { echo "no rootfs to inspect"; exit 0; }
-          echo "== /etc/skel =="
-          sudo ls -la "$root/etc/skel" 2>&1 | head -30
-          echo "== nvm tree =="
-          sudo find "$root/etc/skel/.nvm" -maxdepth 4 2>/dev/null | head -40 || echo "no .nvm"
-          echo "== node/npm anywhere in the image =="
-          sudo find "$root" -name 'npm' -o -name 'node' 2>/dev/null | grep -v /proc/ | head -20
-          echo "== nvm install log, if any =="
-          sudo find "$root" -maxdepth 3 -name 'nvm*.log' 2>/dev/null | head
+          echo "== work dir =="
+          sudo ls -la /mnt/isoforge 2>&1 | head -12
+          for base in "$up" "$root"; do
+            [ -d "$base" ] || continue
+            echo "== $base/etc/skel =="
+            sudo ls -la "$base/etc/skel" 2>&1 | head -25
+            echo "== $base nvm tree =="
+            sudo find "$base/etc/skel/.nvm" -maxdepth 5 2>/dev/null | head -40
+            echo "== $base node/npm =="
+            sudo find "$base" \( -name npm -o -name node \) 2>/dev/null | head -20
+          done
           echo "== disk =="
           df -h /mnt | tail -1
 
