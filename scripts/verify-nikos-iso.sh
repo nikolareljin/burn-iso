@@ -49,6 +49,22 @@ fi
 volid=$(xorriso -indev "$ISO" -pvd_info 2>&1 | sed -n "s/^Volume id *: *'\(.*\)'$/\1/p" | head -1)
 check "volume id is the recipe's" "$volid" "NIKOS_2404"
 
+# The build writes a checksum beside the image. Recomputing it here is what
+# turns that file into evidence: without this a truncated or corrupted image
+# passes every other check, since they all read structure rather than bytes.
+if [[ -f "$ISO.sha256" ]]; then
+  ok "a checksum ships beside the image"
+  recorded=$(awk '{print $1}' "$ISO.sha256")
+  actual=$(sha256sum "$ISO" | awk '{print $1}')
+  if [[ -n "$recorded" && "$recorded" == "$actual" ]]; then
+    ok "the image matches its recorded checksum"
+  else
+    bad "the image matches its recorded checksum (recorded $recorded, actual $actual)"
+  fi
+else
+  bad "a checksum ships beside the image (no $ISO.sha256)"
+fi
+
 echo
 echo "== contents =="
 xorriso -osirrox on -indev "$ISO" -extract / "$WORK/iso" >/dev/null 2>&1

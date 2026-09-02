@@ -162,6 +162,29 @@ FAKE_TAGS_MODE=normal
 homes=$(grep -c 'export HOME=' "$REPO_ROOT/inc/forge/ansible.sh")
 check "galaxy and the playbook both run with HOME set" "$homes" "2"
 
+# A tag is a literal name. With a regex match, a tag carrying a metacharacter
+# matches something it does not name, or fails to match itself, and the guard
+# then reports the opposite of the truth.
+forge_in_chroot() {
+  printf 'play #1 (local): p\tTAGS: []\n      TASK TAGS: [ollama-models, ai.local, plain]\n'
+}
+if forge_ansible_check_tags /opt/x site.yml inventory/local skip_tags 'ollama-models' >/dev/null 2>&1; then
+  ok "a literal tag name is accepted"
+else
+  bad "a literal tag name is accepted"
+fi
+# 'ai.local' exists; 'ai-local' does not, and as a regex the dot would match the dash.
+if forge_ansible_check_tags /opt/x site.yml inventory/local skip_tags 'ai-local' >/dev/null 2>&1; then
+  bad "a tag matching only as a regex is rejected"
+else
+  ok "a tag matching only as a regex is rejected"
+fi
+if forge_ansible_check_tags /opt/x site.yml inventory/local skip_tags 'ollama-.*' >/dev/null 2>&1; then
+  bad "a regex pattern is not treated as a tag"
+else
+  ok "a regex pattern is not treated as a tag"
+fi
+
 # --- the verifier ships and is runnable ------------------------------------
 if [[ -x "$REPO_ROOT/scripts/verify-nikos-iso.sh" ]]; then
   ok "the ISO verifier is executable"

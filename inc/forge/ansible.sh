@@ -130,7 +130,10 @@ forge_ansible_check_tags() {
   local missing=() t
   for t in "${wanted[@]}"; do
     [[ -n "$t" ]] || continue
-    grep -qx -- "$t" <<<"$available" || missing+=("$t")
+    # -F because a tag is a literal name. Without it a tag carrying a regex
+    # metacharacter would match something it does not name, or fail to match
+    # itself, and the guard would report the opposite of the truth.
+    grep -qxF -- "$t" <<<"$available" || missing+=("$t")
   done
 
   if ((${#missing[@]})); then
