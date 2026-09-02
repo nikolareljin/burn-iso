@@ -174,7 +174,10 @@ ansible:
   ref: "0.6.3"          # an immutable tag, never a branch
   playbook: site.yml
   skel_home: /etc/skel
-  skip_tags: [github-setup]
+  # Only tags a role actually declares. github-setup has none, so naming it
+  # here would do nothing, and the tag guard rejects it rather than let the
+  # build quietly include what you meant to leave out.
+  skip_tags: [ai-local, network, music, education]
   extra_vars:
     nikos_desktop_flavor: xubuntu-minimal
 ```

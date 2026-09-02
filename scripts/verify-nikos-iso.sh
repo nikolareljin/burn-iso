@@ -91,9 +91,9 @@ elif [[ -f "$sources" ]]; then
     printf '\n%d passed, %d failed\n' "$pass" "$fail"
     exit 1
   fi
-  stem=$(python3 - "$sources" <<'PY'
+  stem=$(python3 - "$sources" <<'PY' || true
 import sys, yaml
-doc = yaml.safe_load(open(sys.argv[1]))
+doc = yaml.safe_load(open(sys.argv[1])) or []
 found = []
 
 def walk(node):
@@ -107,6 +107,10 @@ def walk(node):
             walk(item)
 
 walk(doc)
+if not found:
+    # Nothing to report on. The caller turns an empty answer into a clean
+    # failure; raising here would abort before the summary is printed.
+    sys.exit(3)
 found.sort(key=lambda pair: not pair[0])
 path = found[0][1]
 print(path[:-len(".squashfs")] if path.endswith(".squashfs") else path)
@@ -185,8 +189,14 @@ for layer in "${layers[@]}"; do
     tail -5 "$WORK/unsquash.log" >&2
     continue
   fi
-  rsync -a "$WORK/layer$i/" "$WORK/root/" 2>/dev/null || \
-    cp -a "$WORK/layer$i/." "$WORK/root/" 2>/dev/null || true
+  if ! rsync -a "$WORK/layer$i/" "$WORK/root/" 2>"$WORK/merge.log"; then
+    if ! cp -a "$WORK/layer$i/." "$WORK/root/" 2>>"$WORK/merge.log"; then
+      # Reported rather than ignored: an incomplete merge makes every
+      # assertion below report files as missing that are really present.
+      bad "layer $(basename "$layer") merges into the root filesystem"
+      tail -3 "$WORK/merge.log" >&2
+    fi
+  fi
   rm -rf "$WORK/layer$i"
 done
 
