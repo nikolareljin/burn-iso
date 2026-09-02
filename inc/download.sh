@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# SCRIPT: download.sh
+# DESCRIPTION: Download one or more ISOs from the configured distro catalog.
+# USAGE: download [--config PATH] [-h|--help]
+# PARAMETERS:
+#   --config PATH  Override config file path.
+#   -h, --help     Show help and exit.
 set -euo pipefail
 
 # Load shared helpers from submodule in ./scripts (override with SCRIPT_HELPERS_DIR)
@@ -12,6 +18,23 @@ else
   REPO_ROOT="$SCRIPT_DIR"
 fi
 SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts/script-helpers}"
+if [[ -f "$REPO_ROOT/inc/cli-help.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$REPO_ROOT/inc/cli-help.sh"
+else
+  >&2 printf "Missing required CLI help file: %s\n" "$REPO_ROOT/inc/cli-help.sh"
+  exit 1
+fi
+
+set +e
+isoforge_parse_config_only_args "$@"
+parse_status=$?
+set -e
+case "$parse_status" in
+  0) ;;
+  1) isoforge_show_help download; exit 0 ;;
+  *) isoforge_show_help download; exit 2 ;;
+esac
 
 if [[ ! -f "$SCRIPT_HELPERS_DIR/helpers.sh" ]]; then
   >&2 printf "Missing required helper library: %s\n" "$SCRIPT_HELPERS_DIR/helpers.sh"

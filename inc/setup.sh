@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# SCRIPT: setup.sh
+# DESCRIPTION: Install dependencies needed by Isoforge.
+# USAGE: setup [-h|--help] [PACKAGE...]
+# PARAMETERS:
+#   -h, --help  Show help and exit.
+#   PACKAGE     Optional package names to install instead of default dependency set.
 set -euo pipefail
 
 # Install all dependencies for this repo using script-helpers
@@ -13,6 +19,21 @@ else
   REPO_ROOT="$SCRIPT_DIR"
 fi
 SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts/script-helpers}"
+
+if [[ -f "$REPO_ROOT/inc/cli-help.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$REPO_ROOT/inc/cli-help.sh"
+else
+  >&2 printf "Missing required CLI help file: %s\n" "$REPO_ROOT/inc/cli-help.sh"
+  exit 1
+fi
+
+case "${1:-}" in
+  -h|--help)
+    isoforge_show_help setup
+    exit 0
+    ;;
+esac
 
 ensure_helpers_library() {
   local helpers_path="${1:-$SCRIPT_HELPERS_DIR/helpers.sh}"

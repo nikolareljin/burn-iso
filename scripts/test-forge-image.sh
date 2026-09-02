@@ -283,6 +283,20 @@ else
   ok "the pack step no longer splits arguments with xargs"
 fi
 
+# `mapfile < <(cmd)` cannot see cmd fail, so a split that errored would leave
+# the argument list empty and xorriso would pack with no boot arguments: an
+# image that mounts perfectly and boots nothing.
+if grep -q 'mapfile -t args < <(' "$REPO_ROOT/inc/forge/image.sh"; then
+  bad "boot-argument splitting detects its own failure"
+else
+  ok "boot-argument splitting detects its own failure"
+fi
+if grep -q 'parsed to nothing' "$REPO_ROOT/inc/forge/image.sh"; then
+  ok "an empty split aborts the pack"
+else
+  bad "an empty split aborts the pack"
+fi
+
 # --- the chroot must not inherit the build host's environment ---------------
 # A real build failed because NVM_DIR from a CI runner reached the chroot and
 # pointed an installer at a host path. Anything not on the allow-list below

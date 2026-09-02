@@ -95,9 +95,23 @@ forge_pack() {
       # and xorriso's report contains exactly that, `-e '--interval:...'` for
       # the EFI boot image. The empty field left the interval as a positional
       # argument and xorriso refused the whole command.
-      mapfile -t args < <(printf '%s' "$reported" | python3 -c 'import shlex,sys
+      # Command substitution, not process substitution: `mapfile < <(cmd)`
+      # cannot see cmd fail, so a split that errored would leave args empty and
+      # xorriso would pack with no boot arguments at all. That produces an
+      # image which mounts perfectly and boots nothing, which is the exact
+      # failure this whole step exists to avoid.
+      local split=""
+      if ! split=$(printf '%s' "$reported" | python3 -c 'import shlex,sys
 for word in shlex.split(sys.stdin.read()):
-    print(word)')
+    print(word)'); then
+        log_error "Could not parse the boot arguments reported for $base_iso."
+        return 1
+      fi
+      if [[ -z "$split" ]]; then
+        log_error "The boot arguments reported for $base_iso parsed to nothing."
+        return 1
+      fi
+      mapfile -t args <<<"$split"
       ;;
     3)
       # Nothing to reproduce. A non-bootable base gives a non-bootable output,

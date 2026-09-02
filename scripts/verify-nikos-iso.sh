@@ -200,6 +200,9 @@ for layer in "${layers[@]}"; do
   if ! unsquashfs -n -no-xattrs -d "$WORK/layer$i" "$layer" >"$WORK/unsquash.log" 2>&1; then
     bad "layer $(basename "$layer") unpacks"
     tail -5 "$WORK/unsquash.log" >&2
+    # A partial extraction is several gigabytes of no use to anything, and the
+    # checks after this one are already tight on disk.
+    rm -rf "${WORK:?}/layer$i"
     continue
   fi
   # overlayfs records a deleted path in an upper layer as a character device
