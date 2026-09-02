@@ -1,3 +1,10 @@
+isoforge (2.0.1-1) unstable; urgency=medium
+
+  * Grant the release workflow the permissions its called workflows declare.
+    Every run had been rejected at startup, so no package had ever been built.
+
+ -- Nikola Reljin <nikola.reljin@gmail.com>  Tue, 01 Sep 2026 00:00:00 +0000
+
 isoforge (2.0.0-1) unstable; urgency=medium
 
   * Add `isoforge build`, which remasters an Ubuntu or Xubuntu base image into
@@ -21,4 +28,4 @@ isoforge (0.1.0-1) unstable; urgency=medium
 
   * Initial release.
 
- -- Nikola Reljin <nikola.reljin@gmail.com>  Thu, 09 Jan 2026 00:00:00 +0000
+ -- Nikola Reljin <nikola.reljin@gmail.com>  Fri, 09 Jan 2026 00:00:00 +0000
