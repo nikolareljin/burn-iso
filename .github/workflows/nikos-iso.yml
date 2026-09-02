@@ -84,6 +84,24 @@ jobs:
           echo "iso=$iso" >>"$GITHUB_OUTPUT"
           ls -lh /mnt/out
 
+      # The work directory survives a failed build. Rather than guess at what a
+      # playbook did from its recap, look at what it actually left behind.
+      - name: Collect evidence from a failed build
+        if: failure()
+        run: |
+          root=/mnt/isoforge/rootfs
+          [ -d "$root" ] || { echo "no rootfs to inspect"; exit 0; }
+          echo "== /etc/skel =="
+          sudo ls -la "$root/etc/skel" 2>&1 | head -30
+          echo "== nvm tree =="
+          sudo find "$root/etc/skel/.nvm" -maxdepth 4 2>/dev/null | head -40 || echo "no .nvm"
+          echo "== node/npm anywhere in the image =="
+          sudo find "$root" -name 'npm' -o -name 'node' 2>/dev/null | grep -v /proc/ | head -20
+          echo "== nvm install log, if any =="
+          sudo find "$root" -maxdepth 3 -name 'nvm*.log' 2>/dev/null | head
+          echo "== disk =="
+          df -h /mnt | tail -1
+
       - name: Verify the image is NikOS
         env:
           ISO: ${{ steps.build.outputs.iso }}
