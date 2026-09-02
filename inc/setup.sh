@@ -28,12 +28,14 @@ else
   exit 1
 fi
 
-case "${1:-}" in
-  -h|--help)
-    isoforge_show_help setup
-    exit 0
-    ;;
-esac
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help)
+      isoforge_show_help setup
+      exit 0
+      ;;
+  esac
+done
 
 ensure_helpers_library() {
   local helpers_path="${1:-$SCRIPT_HELPERS_DIR/helpers.sh}"
