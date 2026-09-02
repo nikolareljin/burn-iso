@@ -55,19 +55,76 @@ chmod -R u+w "$WORK/iso" 2>/dev/null || true
 have "casper/ is present" "$WORK/iso/casper"
 check ".disk/info names the build" "$(cat "$WORK/iso/.disk/info" 2>/dev/null)" "NIKOS_2404"
 
-squash=""
-for candidate in "$WORK/iso/casper/filesystem.squashfs" "$WORK"/iso/casper/*.squashfs; do
-  [[ -f "$candidate" ]] && { squash="$candidate"; break; }
-done
-if [[ -z "$squash" ]]; then
+# On a layered image the squashfs files are diffs, so inspecting any one of
+# them says nothing: the base layer has no NikOS in it and the top layer has
+# only what the build added. What matters is the stack the installer lays down,
+# which install-sources.yaml names, so resolve that and unpack the whole chain.
+casper="$WORK/iso/casper"
+sources="$casper/install-sources.yaml"
+declare -a layers=()
+
+if [[ -f "$casper/filesystem.squashfs" ]]; then
+  layers=("$casper/filesystem.squashfs")
+  ok "root filesystem found: filesystem.squashfs"
+elif [[ -f "$sources" ]]; then
+  stem=$(python3 - "$sources" <<'PY'
+import sys, yaml
+doc = yaml.safe_load(open(sys.argv[1]))
+found = []
+
+def walk(node):
+    if isinstance(node, dict):
+        if isinstance(node.get("path"), str) and node["path"]:
+            found.append((node.get("default") is True, node["path"]))
+        for value in node.values():
+            walk(value)
+    elif isinstance(node, list):
+        for item in node:
+            walk(item)
+
+walk(doc)
+found.sort(key=lambda pair: not pair[0])
+path = found[0][1]
+print(path[:-len(".squashfs")] if path.endswith(".squashfs") else path)
+PY
+)
+  if [[ -z "$stem" ]]; then
+    bad "install-sources.yaml names an install source"
+    printf '\n%d passed, %d failed\n' "$pass" "$fail"
+    exit 1
+  fi
+  ok "the installer's source is '$stem'"
+
+  # Same ordering rule the build uses: names nest by prefix, so shortest first
+  # puts each layer after the one it extends. Stop at the install source.
+  while read -r f; do
+    layers+=("$casper/$f")
+    [[ "${f%.squashfs}" == "$stem" ]] && break
+  done < <(find "$casper" -maxdepth 1 -name '*.squashfs' -printf '%f\n' | awk '{ print length, $0 }' | sort -n | cut -d' ' -f2-)
+
+  if [[ "$(basename "${layers[-1]}" .squashfs)" != "$stem" ]]; then
+    bad "the install source has a squashfs on the image"
+    printf '\n%d passed, %d failed\n' "$pass" "$fail"
+    exit 1
+  fi
+  ok "the installed system is ${#layers[@]} layer(s), topped by $(basename "${layers[-1]}")"
+
+  # The build's own layer has to be the top one, or the installer would lay
+  # down a system without any of it.
+  if [[ "$stem" == *.isoforge ]]; then
+    ok "the installer is pointed at the layer this build wrote"
+  else
+    bad "the installer is pointed at the layer this build wrote (points at '$stem')"
+  fi
+else
   bad "a squashfs is present in casper/"
   printf '\n%d passed, %d failed\n' "$pass" "$fail"
   exit 1
 fi
-ok "root filesystem found: $(basename "$squash")"
 
+squash="${layers[-1]}"
 manifest="${squash%.squashfs}.manifest"
-[[ -f "$manifest" ]] || manifest="$WORK/iso/casper/filesystem.manifest"
+[[ -f "$manifest" ]] || manifest="$casper/filesystem.manifest"
 if [[ -f "$manifest" ]]; then
   ok "a package manifest ships beside it"
   for pkg in xubuntu-desktop-minimal lightdm; do
@@ -83,10 +140,13 @@ fi
 
 echo
 echo "== NikOS inside the root filesystem =="
-# -no-xattrs so this works unprivileged; ownership is irrelevant to what is
-# being asserted here.
-unsquashfs -no-xattrs -d "$WORK/root" "$squash" >/dev/null 2>&1 || \
-  sudo unsquashfs -d "$WORK/root" "$squash" >/dev/null 2>&1
+# Unpack the layers in order into one directory, so what is inspected is the
+# filesystem the installer would produce rather than any single diff.
+# -no-xattrs so this works unprivileged; ownership is irrelevant here.
+for layer in "${layers[@]}"; do
+  unsquashfs -no-xattrs -f -d "$WORK/root" "$layer" >/dev/null 2>&1 || \
+    sudo unsquashfs -f -d "$WORK/root" "$layer" >/dev/null 2>&1 || true
+done
 
 if [[ ! -d "$WORK/root" ]]; then
   bad "the root filesystem unpacks"
