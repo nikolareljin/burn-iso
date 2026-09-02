@@ -51,3 +51,11 @@ ansible:
     - education
   extra_vars:
     nikos_desktop_flavor: xubuntu-minimal
+    # VS Code refuses to run as root without --no-sandbox and an explicit
+    # --user-data-dir, so `code --install-extension` fails inside the chroot.
+    # Emptying these lists is the right answer rather than a workaround:
+    # extensions install into a user's own ~/.vscode, so there is no build-time
+    # place to put them that an installed account would inherit. They belong on
+    # the machine, after first login.
+    nikos_vscode_extensions: []
+    nikos_vscode_ai_extensions: []

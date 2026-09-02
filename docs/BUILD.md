@@ -185,6 +185,17 @@ already guards its `xfconf-query` calls with `failed_when: false`, so they
 no-op; anything else belongs in `skip_tags`, and NikOS's own autostart pass is
 the right mechanism for work that must happen at first login.
 
+### extra_vars keeps its types
+
+`ansible.extra_vars` is passed to the playbook as a single JSON object, so a
+recipe can hand it lists and mappings rather than only strings. This matters
+more than it sounds: `-e key=value` makes a string no matter what it looks
+like, so a list passed that way arrives as `"[]"` and any role that
+concatenates it with another list fails on the type.
+
+`nikos_home` and `nikos_user` are merged in first, so a recipe can override
+them if it needs to.
+
 ### Tags only work on roles that declare them
 
 `--tags` and `--skip-tags` match tags, not role names. A role listed in a

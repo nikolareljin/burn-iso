@@ -44,17 +44,15 @@ forge_ansible() {
   local skel_home
   skel_home=$(recipe_get '.ansible.skel_home // "/etc/skel"')
 
-  args+=(-e "nikos_home=$skel_home")
-  args+=(-e "nikos_user=root")
-
-  local extra_count i key val
-  extra_count=$(recipe_get '.ansible.extra_vars // {} | length')
-  if ((extra_count > 0)); then
-    while IFS=$'\t' read -r key val; do
-      [[ -n "$key" ]] || continue
-      args+=(-e "$key=$val")
-    done < <(jq -r '.ansible.extra_vars // {} | to_entries[] | "\(.key)\t\(.value)"' <<<"$RECIPE_JSON")
-  fi
+  # One JSON blob rather than a series of key=value pairs. ansible parses
+  # `-e key=value` as a string no matter what it looks like, so a recipe could
+  # not pass a list or a mapping: `-e nikos_vscode_extensions=[]` sets the
+  # string "[]", and a role that concatenates it with another list then fails
+  # on a string. JSON keeps the recipe's types intact.
+  local vars_json
+  vars_json=$(jq -c --arg home "$skel_home" \
+    '{nikos_home: $home, nikos_user: "root"} * (.ansible.extra_vars // {})' <<<"$RECIPE_JSON")
+  args+=(-e "$vars_json")
 
   local -a tags skips
   mapfile -t tags < <(recipe_list '.ansible.tags')

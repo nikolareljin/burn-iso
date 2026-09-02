@@ -83,6 +83,21 @@ else
   bad "the local AI stack is left out of the image"
 fi
 
+# The first real build failed here: `code --install-extension` refuses to run as
+# root, and extensions install into a user's own ~/.vscode anyway, so there is
+# no build-time place to put them.
+check "VS Code extensions are left to first login" \
+  "$(recipe_get '.ansible.extra_vars.nikos_vscode_extensions | length')" "0"
+check "AI VS Code extensions are left to first login" \
+  "$(recipe_get '.ansible.extra_vars.nikos_vscode_ai_extensions | length')" "0"
+
+# A list has to reach ansible as a list. `-e key=value` always makes a string,
+# and a role concatenating that with another list fails on the type.
+check "extra_vars keeps a list a list" \
+  "$(recipe_get '.ansible.extra_vars.nikos_vscode_extensions | type')" "array"
+check "extra_vars keeps a string a string" \
+  "$(recipe_get '.ansible.extra_vars.nikos_desktop_flavor | type')" "string"
+
 # --- the tag guard ----------------------------------------------------------
 # shellcheck source=/dev/null
 source "$REPO_ROOT/inc/forge/chroot.sh"
