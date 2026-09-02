@@ -142,7 +142,10 @@ found = []
 
 def walk(node):
     if isinstance(node, dict):
-        if node.get("type") == "fsimage-layered" and isinstance(node.get("path"), str):
+        # Match on having a `path`, not on `type`. The type string has changed
+        # between releases (fsimage, fsimage-layered), and a source without one
+        # is still the source.
+        if isinstance(node.get("path"), str) and node["path"]:
             found.append((node.get("default") is True, node["path"]))
         for value in node.values():
             walk(value)

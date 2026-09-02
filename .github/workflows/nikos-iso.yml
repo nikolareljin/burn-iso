@@ -105,6 +105,10 @@ jobs:
             echo "== $base node/npm =="
             sudo find "$base" \( -name npm -o -name node \) 2>/dev/null | head -20
           done
+          echo "== install-sources.yaml as shipped =="
+          sudo cat /mnt/isoforge/iso/casper/install-sources.yaml 2>&1 | head -40
+          echo "== casper contents =="
+          sudo ls -la /mnt/isoforge/iso/casper 2>&1 | head -20
           echo "== disk =="
           df -h /mnt | tail -1
 
