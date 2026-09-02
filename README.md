@@ -1,6 +1,6 @@
 Isoforge
 
-Simple shell scripts for downloading popular Linux ISOs and burning them to a USB device using `dialog` for UI prompts.
+Shell tooling for Linux images: download them from a curated list, write them to USB with `dd` or Ventoy, and build your own installable ISO from a recipe. The interface is `dialog`-based.
 
 <img width="1111" height="606" alt="image" src="https://github.com/user-attachments/assets/5ea1e06b-feaf-4208-9c4b-80cbd99d1891" />
 
@@ -25,7 +25,7 @@ Important: Clone With Submodules
 
 Recent Changes
 
-- Root commands are short symlinks (`./isoforge`, `./download`, `./burn`, `./setup`, `./build`, `./test`, `./update`).
+- Root commands are short symlinks (`./isoforge`, `./forge`, `./download`, `./burn`, `./setup`, `./build`, `./test`, `./update`).
 - Actual app scripts were moved from `./scripts/script-helpers/scripts/*.sh` to `./inc/*.sh`.
 - Scripts resolve the repo root at runtime so they work via symlinks or direct `bash ./inc/<name>.sh`.
 
@@ -48,9 +48,11 @@ Curated Distros (config.json)
 Symlinked entrypoints
 
 - The root now contains simple entrypoints without the `.sh` suffix:
-  `./isoforge`, `./download`, `./burn`, `./setup`, `./build`, `./test`, `./update`.
-- App flow entrypoints (`./isoforge`, `./download`, `./burn`, `./setup`) point to scripts in `./inc/*.sh`.
+  `./isoforge`, `./forge`, `./download`, `./burn`, `./setup`, `./build`, `./test`, `./update`.
+- App flow entrypoints (`./isoforge`, `./forge`, `./download`, `./burn`, `./setup`) point to scripts in `./inc/*.sh`.
 - Helper entrypoints (`./build`, `./test`, `./update`) point to scripts in `./scripts/*.sh`.
+- `./build` and `./forge` are different things: `./build` runs packaging sanity
+  checks, `./forge` builds an ISO.
 - This keeps the root clean and makes commands shorter to run.
 
 Build A Custom ISO
@@ -170,6 +172,9 @@ Installable CLI
 
 - System install usage:
   - `isoforge [--config PATH] [--version] [--help]`
+  - `sudo isoforge build --recipe PATH [--config PATH] [--output DIR] [--dry-run]`
+- Example recipes when installed:
+  - `/usr/share/isoforge/recipes/`
 - Default config when installed:
   - `/usr/share/isoforge/config.json`
 - Man page:
@@ -179,7 +184,7 @@ Packaging
 
 - Debian/Ubuntu:
   - Build `.deb`: `./tools/build-deb.sh`
-  - Upload to PPA: `./tools/ppa-upload.sh --ppa ppa:your-launchpad-id/isoforge --key-id <GPG_KEY_ID>`
+  - Upload to PPA: `./tools/ppa-upload.sh --ppa ppa:nikolareljin/isoforge --key-id <GPG_KEY_ID>`
 - RPM (RedHat-based):
   - Build `.rpm`: `./tools/build-rpm.sh`
 - Homebrew:

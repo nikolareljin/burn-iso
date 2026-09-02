@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning when applicable.
 
+## 2026-09-01 — 2.0.2
+
+### Fixed
+- **The Debian package could not be built.** `debian/source/format` declared `3.0 (quilt)`, which requires an upstream tarball at `../isoforge_<version>.orig.tar.*`. This project has no separate upstream release, so `dpkg-source` refused with "no upstream tarball found" and the `deb` job failed the moment it was able to run at all. The package is native, and now says so.
+- **The RPM could not be built.** The spec's `%autosetup` unpacks `Source0`, but no `Source0:` was declared, so `rpmbuild` stopped with "error: No source number 0". It now declares `%{name}-%{version}.tar.gz`, which is exactly the tarball and prefix `build_rpm_artifacts.sh` writes into `SOURCES`.
+
+Both were invisible until 2.0.1 fixed the workflow permissions, because until then the release run was rejected before any job started.
+
+### Changed
+- `README.md` describes building images, lists `./forge` among the entrypoints, distinguishes it from `./build`, documents `isoforge build` for a system install, and drops the placeholder PPA target that the release workflow no longer uses.
+
 ## 2026-09-01 — 2.0.1
 
 ### Fixed
