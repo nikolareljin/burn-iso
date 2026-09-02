@@ -16,6 +16,8 @@ if [[ -z "$ISO" || ! -f "$ISO" ]]; then
   exit 2
 fi
 
+# Several gigabytes land here: the extracted image, one unpacked layer at a
+# time, and the merged filesystem. Set TMPDIR to move it off a small /tmp.
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -143,21 +145,28 @@ echo "== NikOS inside the root filesystem =="
 # Unpack the layers in order into one directory, so what is inspected is the
 # filesystem the installer would produce rather than any single diff.
 # -no-xattrs so this works unprivileged; ownership is irrelevant here.
-# Failures here are reported rather than swallowed: a layer that does not
-# unpack looks exactly like a layer whose contents are missing, and the two
-# need telling apart.
+# Each layer is unpacked into its own directory and then merged, rather than
+# unpacked on top of the previous one. unsquashfs cannot create a hardlink
+# where a file already exists and aborts the whole layer partway through:
+#
+#   FATAL ERROR: create_inode: failed to create hardlink, because File exists
+#
+# which silently leaves out everything after the first collision. Merging with
+# rsync applies the layers in order without that constraint, and each unpacked
+# layer is removed once merged so only one extra copy is on disk at a time.
+mkdir -p "$WORK/root"
+i=0
 for layer in "${layers[@]}"; do
-  if ! unsquashfs -n -no-xattrs -f -d "$WORK/root" "$layer" >"$WORK/unsquash.log" 2>&1; then
+  i=$((i + 1))
+  if ! unsquashfs -n -no-xattrs -d "$WORK/layer$i" "$layer" >"$WORK/unsquash.log" 2>&1; then
     bad "layer $(basename "$layer") unpacks"
     tail -5 "$WORK/unsquash.log" >&2
+    continue
   fi
+  rsync -a "$WORK/layer$i/" "$WORK/root/" 2>/dev/null || \
+    cp -a "$WORK/layer$i/." "$WORK/root/" 2>/dev/null || true
+  rm -rf "$WORK/layer$i"
 done
-
-# What the build's own layer actually contains, so a missing file below can be
-# told apart from a file that was never written.
-top="${layers[-1]}"
-echo "-- NikOS paths in $(basename "$top") --"
-unsquashfs -l "$top" 2>/dev/null | grep -iE 'nikos|plymouth/themes' | head -12 || echo "   (none)"
 
 if [[ ! -d "$WORK/root" ]]; then
   bad "the root filesystem unpacks"

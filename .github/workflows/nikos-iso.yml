@@ -115,7 +115,11 @@ jobs:
       - name: Verify the image is NikOS
         env:
           ISO: ${{ steps.build.outputs.iso }}
-        run: sudo ./scripts/verify-nikos-iso.sh "$ISO"
+        run: |
+          # Unpacking the image and its layers needs room; /tmp is not the
+          # place for it.
+          sudo mkdir -p /mnt/verify
+          sudo TMPDIR=/mnt/verify ./scripts/verify-nikos-iso.sh "$ISO"
 
       # Proves the firmware hands off to a bootloader. It does not prove the
       # installer completes, and the job says so rather than implying otherwise.
