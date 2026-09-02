@@ -143,10 +143,21 @@ echo "== NikOS inside the root filesystem =="
 # Unpack the layers in order into one directory, so what is inspected is the
 # filesystem the installer would produce rather than any single diff.
 # -no-xattrs so this works unprivileged; ownership is irrelevant here.
+# Failures here are reported rather than swallowed: a layer that does not
+# unpack looks exactly like a layer whose contents are missing, and the two
+# need telling apart.
 for layer in "${layers[@]}"; do
-  unsquashfs -no-xattrs -f -d "$WORK/root" "$layer" >/dev/null 2>&1 || \
-    sudo unsquashfs -f -d "$WORK/root" "$layer" >/dev/null 2>&1 || true
+  if ! unsquashfs -n -no-xattrs -f -d "$WORK/root" "$layer" >"$WORK/unsquash.log" 2>&1; then
+    bad "layer $(basename "$layer") unpacks"
+    tail -5 "$WORK/unsquash.log" >&2
+  fi
 done
+
+# What the build's own layer actually contains, so a missing file below can be
+# told apart from a file that was never written.
+top="${layers[-1]}"
+echo "-- NikOS paths in $(basename "$top") --"
+unsquashfs -l "$top" 2>/dev/null | grep -iE 'nikos|plymouth/themes' | head -12 || echo "   (none)"
 
 if [[ ! -d "$WORK/root" ]]; then
   bad "the root filesystem unpacks"
