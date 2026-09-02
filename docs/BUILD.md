@@ -185,6 +185,44 @@ already guards its `xfconf-query` calls with `failed_when: false`, so they
 no-op; anything else belongs in `skip_tags`, and NikOS's own autostart pass is
 the right mechanism for work that must happen at first login.
 
+### Tags only work on roles that declare them
+
+`--tags` and `--skip-tags` match tags, not role names. A role listed in a
+playbook without a `tags:` key cannot be selected or skipped at all. In NikOS
+0.6.1 that means `base`, `desktop`, `theming`, `github-setup`, `editors`,
+`cloud-ai-cli`, `agent-dev` and `dev-tools` always run, and only `ai-local`,
+`network`, `music`, `education` and the `never`-tagged opt-ins can be turned
+off.
+
+This matters because the two failure modes are not symmetric. A `tags` entry
+that matches nothing runs less than you asked for and is obvious. A `skip_tags`
+entry that matches nothing runs *more* than you asked for, silently, and for an
+image build that is the expensive direction. `recipes/nikos.yml` shipped with
+`skip_tags: [github-setup]` in 2.0.0, which did nothing at all.
+
+So iso-forge asks the playbook what tags it has, with
+`ansible-playbook --list-tags`, and fails the build if a recipe names one that
+does not exist. If the listing cannot be read it warns and continues, because
+an unreadable tag list is not a reason to refuse to build.
+
+## Verifying a NikOS image
+
+`.github/workflows/nikos-iso.yml` runs `recipes/nikos.yml` end to end on a real
+Xubuntu base, then checks the artifact rather than the build log:
+
+```bash
+scripts/verify-nikos-iso.sh ~/Downloads/iso_images/nikos-24.04-amd64.iso
+```
+
+It asserts the image is ISO 9660, carries an El Torito boot record, has the
+recipe's volume id, and is the size a desktop image should be; then unpacks the
+root filesystem and looks for `/usr/local/bin/nikos`, the NikOS Plymouth theme,
+the Xfce session, LightDM, desktop configuration in `/etc/skel`, an emptied
+`/etc/machine-id`, and the absence of the build's own `policy-rc.d`.
+
+That workflow runs on demand, and automatically when the builder, the recipes
+or the workflow itself change. It takes 30 to 60 minutes.
+
 ## Checking the result
 
 ```bash

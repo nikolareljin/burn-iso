@@ -1,0 +1,138 @@
+name: NikOS ISO
+
+# The real thing: download a stock Xubuntu image, run recipes/nikos.yml against
+# it, and assert that what comes out is NikOS. Nothing here is mocked.
+#
+# This cannot live in the ordinary PR gate. It downloads about 4.5 GB, needs
+# root for chroot and overlayfs, wants ~25 GB of scratch space and takes the
+# better part of an hour. So it runs on demand, and automatically only when the
+# builder, the recipes or this workflow change, which is exactly when the
+# question "does a real build still work?" is worth an hour.
+on:
+  workflow_dispatch:
+    inputs:
+      recipe:
+        description: Recipe to build
+        type: string
+        default: recipes/nikos.yml
+      keep_work:
+        description: Keep the work directory for inspection
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - 'inc/forge.sh'
+      - 'inc/forge/**'
+      - 'recipes/**'
+      - 'scripts/verify-nikos-iso.sh'
+      - '.github/workflows/nikos-iso.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      # A stock runner has nowhere near enough room: the base image, the
+      # extracted tree, the unpacked root filesystem, the rebuilt squashfs and
+      # the output all coexist. Most of what is reclaimed here is preinstalled
+      # toolchains this build has no use for.
+      - name: Free disk space
+        run: |
+          echo "before:"; df -h / /mnt | sed 's/^/  /'
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost /usr/local/.ghcup \
+                      /usr/local/lib/node_modules /opt/hostedtoolcache
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          echo "after:"; df -h / /mnt | sed 's/^/  /'
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            xorriso squashfs-tools rsync jq python3-yaml
+
+      - name: Show what will be built
+        env:
+          RECIPE: ${{ inputs.recipe || 'recipes/nikos.yml' }}
+        run: ./forge --recipe "$RECIPE" --dry-run
+
+      # /mnt is the runner's large scratch disk; / does not have the headroom.
+      - name: Build the image
+        id: build
+        env:
+          RECIPE: ${{ inputs.recipe || 'recipes/nikos.yml' }}
+          KEEP: ${{ inputs.keep_work && 'yes' || 'no' }}
+        run: |
+          sudo mkdir -p /mnt/isoforge /mnt/out
+          sudo chown "$USER" /mnt/out
+          keep=()
+          [ "$KEEP" = "yes" ] && keep=(--keep)
+          sudo ./forge \
+            --recipe "$RECIPE" \
+            --work-dir /mnt/isoforge \
+            --output /mnt/out \
+            "${keep[@]}"
+          iso=$(find /mnt/out -maxdepth 1 -name '*.iso' | head -1)
+          [ -n "$iso" ] || { echo "no ISO was produced" >&2; exit 1; }
+          echo "iso=$iso" >>"$GITHUB_OUTPUT"
+          ls -lh /mnt/out
+
+      - name: Verify the image is NikOS
+        env:
+          ISO: ${{ steps.build.outputs.iso }}
+        run: sudo ./scripts/verify-nikos-iso.sh "$ISO"
+
+      # Proves the firmware hands off to a bootloader. It does not prove the
+      # installer completes, and the job says so rather than implying otherwise.
+      - name: Boot the image under QEMU
+        env:
+          ISO: ${{ steps.build.outputs.iso }}
+        run: |
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 ovmf
+          timeout 180 qemu-system-x86_64 \
+            -m 2048 -nographic -serial file:/tmp/serial.log \
+            -drive file="$ISO",media=cdrom,readonly=on \
+            -boot d >/dev/null 2>&1 || true
+          echo "--- serial output ---"
+          head -40 /tmp/serial.log || true
+          if [ -s /tmp/serial.log ]; then
+            echo "The image produced boot output."
+          else
+            echo "::warning::No serial output in 180s. GRUB may be graphics-only;"
+            echo "::warning::this is not proof the image fails to boot, only that"
+            echo "::warning::this check could not confirm it."
+          fi
+
+      - name: Report
+        if: always()
+        env:
+          ISO: ${{ steps.build.outputs.iso }}
+        run: |
+          iso="$ISO"
+          [ -f "$iso" ] || exit 0
+          echo "### NikOS ISO" >>"$GITHUB_STEP_SUMMARY"
+          echo '```' >>"$GITHUB_STEP_SUMMARY"
+          ls -lh "$iso" >>"$GITHUB_STEP_SUMMARY"
+          cat "$iso.sha256" 2>/dev/null >>"$GITHUB_STEP_SUMMARY" || true
+          echo '```' >>"$GITHUB_STEP_SUMMARY"
+
+      # The image is far past the 2 GB release-asset limit, so it is never
+      # published. The checksum and the manifest are small and are what someone
+      # would actually want to compare against a local build.
+      - name: Upload the manifest and checksum
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nikos-iso-evidence
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            /mnt/out/*.sha256
+            /tmp/serial.log

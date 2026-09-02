@@ -71,6 +71,10 @@ Build A Custom ISO
 - The finished ISO lands in `download_dir`, so `./isoforge` lists it and flashes
   it like any other image.
 - Check a recipe without root, a download or a build: `./forge --recipe recipes/example.yml --dry-run`
+- `recipes/nikos.yml` builds NikOS itself: a Xubuntu base with the NikOS
+  playbook applied inside the image, so the ISO installs an already-provisioned
+  desktop. `.github/workflows/nikos-iso.yml` runs that build end to end and
+  `scripts/verify-nikos-iso.sh` checks the finished image.
 - Full guide: `docs/BUILD.md`.
 
 Isoforge for the CLI

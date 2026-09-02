@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning when applicable.
 
+## 2026-09-01 — 2.1.0
+
+### Added
+- **A real NikOS ISO build, verified end to end.** `.github/workflows/nikos-iso.yml` downloads a stock Xubuntu 24.04.4 image, runs `recipes/nikos.yml` against it, and checks the result. Nothing in it is mocked. It runs on demand and automatically when the builder, the recipes or the workflow change, since that is when "does a real build still work?" is worth an hour.
+- `scripts/verify-nikos-iso.sh` inspects a finished image rather than trusting the build log: ISO 9660, an El Torito boot record, the recipe's volume id, a plausible size, and then inside the root filesystem the NikOS CLI, its Plymouth theme, the Xfce session, LightDM, desktop configuration in `/etc/skel`, an emptied `/etc/machine-id` and no leftover `policy-rc.d`.
+- `scripts/test-forge-nikos.sh` runs on every pull request and covers what the hour-long build should not be the first to catch: the recipe's base, output, `/etc/skel` handoff and pinned playbook ref, and the tag guard below.
+
+### Fixed
+- **`recipes/nikos.yml` skipped a role that cannot be skipped.** It carried `skip_tags: [github-setup]`, but `github-setup` is a role with no `tags:` key, and `--skip-tags` matches tags rather than role names. The skip did nothing. Confirmed against the playbook itself: `ansible-playbook site.yml --list-tags` reports `ai-local, always, education, music, network, never` and the `never`-gated opt-ins, with no `github-setup` among them.
+- The recipe now skips `ai-local`, `network`, `music` and `education`, which are tags that exist. `ai-local` matters most: it pulls Ollama models, which are gigabytes and belong on the installed machine rather than in an ISO.
+- **A recipe naming a tag the playbook does not define now fails the build.** The two failure modes are not symmetric: a bad `tags` entry runs less than intended and is obvious, while a bad `skip_tags` entry silently runs *more* than intended, which for an image build is the expensive direction. iso-forge asks the playbook with `--list-tags` and refuses to continue on a mismatch; an unreadable listing warns rather than blocking.
+
 ## 2026-09-01 — 2.0.2
 
 ### Fixed

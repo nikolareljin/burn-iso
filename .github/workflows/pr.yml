@@ -7,9 +7,9 @@ jobs:
   gate:
     uses: nikolareljin/ci-helpers/.github/workflows/ci.yml@production
     with:
-      build_command: "./tools/gen-man.sh && git diff --exit-code docs/man/isoforge.1 && bash -n inc/isoforge.sh inc/burn.sh inc/download.sh inc/setup.sh inc/forge.sh inc/forge/*.sh"
+      build_command: "./tools/gen-man.sh && git diff --exit-code docs/man/isoforge.1 && bash -n inc/isoforge.sh inc/burn.sh inc/download.sh inc/setup.sh inc/forge.sh inc/forge/*.sh scripts/verify-nikos-iso.sh"
       # The image tests build and repack a synthetic ISO, so the runner needs
       # xorriso and squashfs-tools; without them those tests skip rather than
       # fail, which would hide a real regression. python3-yaml is what reads a
       # recipe, so the recipe tests need it to exercise anything at all.
-      test_command: "git submodule update --init --recursive && sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends xorriso squashfs-tools python3-yaml && ./scripts/test-forge-recipe.sh && ./scripts/test-forge-distrodeck.sh && ./scripts/test-forge-image.sh"
+      test_command: "git submodule update --init --recursive && sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends xorriso squashfs-tools python3-yaml && ./scripts/test-forge-recipe.sh && ./scripts/test-forge-distrodeck.sh && ./scripts/test-forge-image.sh && ./scripts/test-forge-nikos.sh"

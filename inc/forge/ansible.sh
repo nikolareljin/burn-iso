@@ -65,6 +65,9 @@ forge_ansible() {
   local inventory
   inventory=$(recipe_get '.ansible.inventory // "inventory/local"')
 
+  forge_ansible_check_tags "$dest" "$playbook" "$inventory" tags "${tags[@]}" || return $?
+  forge_ansible_check_tags "$dest" "$playbook" "$inventory" skip_tags "${skips[@]}" || return $?
+
   # --connection=local because the chroot is the target; ansible must not try
   # to ssh anywhere.
   local cmd="cd $(forge_q "$dest") && ansible-playbook $(forge_q "$playbook") -i $(forge_q "$inventory") --connection=local"
@@ -78,5 +81,52 @@ forge_ansible() {
     log_error "The playbook failed. Tasks that need a running desktop session cannot"
     log_error "run at build time; list them under ansible.skip_tags in the recipe."
     return 1
+  fi
+}
+
+# A tag that names nothing is silently ignored by ansible-playbook, and the
+# failure mode is asymmetric: a bad `tags` entry runs less than intended, while
+# a bad `skip_tags` entry runs *more* than intended. For an image build that
+# second case is the expensive one, so both are checked and both are fatal.
+#
+# Roles listed in a playbook without a `tags:` key cannot be selected or
+# skipped by name at all, which is exactly the trap this catches.
+forge_ansible_check_tags() {
+  local dest="$1" playbook="$2" inventory="$3" field="$4"
+  shift 4
+  local -a wanted=("$@")
+  ((${#wanted[@]})) || return 0
+
+  local listing
+  if ! listing=$(forge_in_chroot "cd $(forge_q "$dest") && ansible-playbook $(forge_q "$playbook") -i $(forge_q "$inventory") --connection=local --list-tags 2>/dev/null"); then
+    log_warn "Could not list the playbook's tags; ansible.$field is not being checked."
+    return 0
+  fi
+
+  # ansible prints "TASK TAGS: [a, b, c]", sometimes more than once.
+  local available
+  available=$(printf '%s\n' "$listing" \
+    | sed -n 's/.*TASK TAGS: *\[\(.*\)\].*/\1/p' \
+    | tr ',' '\n' | tr -d ' ' | sort -u)
+
+  if [[ -z "$available" ]]; then
+    log_warn "The playbook reported no tags; ansible.$field is not being checked."
+    return 0
+  fi
+
+  local missing=() t
+  for t in "${wanted[@]}"; do
+    [[ -n "$t" ]] || continue
+    grep -qx -- "$t" <<<"$available" || missing+=("$t")
+  done
+
+  if ((${#missing[@]})); then
+    log_error "ansible.$field names tags this playbook does not define: ${missing[*]}"
+    log_error "Available tags: $(paste -sd' ' - <<<"$available")"
+    if [[ "$field" == "skip_tags" ]]; then
+      log_error "A skip that matches nothing does not reduce the build, it silently"
+      log_error "includes whatever you meant to leave out. Refusing to continue."
+    fi
+    return 2
   fi
 }

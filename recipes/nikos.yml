@@ -7,6 +7,8 @@
 #
 #   sudo ./forge --recipe recipes/nikos.yml
 #
+# The build takes 30 to 60 minutes and needs about 25 GB of scratch space.
+# .github/workflows/nikos-iso.yml runs exactly this recipe end to end.
 recipe: nikos-desktop
 
 base:
@@ -32,9 +34,20 @@ ansible:
   # which in a chroot is root. Pointing the per-user half at /etc/skel means
   # every account the installer creates inherits the NikOS desktop.
   skel_home: /etc/skel
-  # These need a running session or a machine that has already booted, so they
-  # belong on first login rather than at build time.
+  # Only roles that carry a `tags:` key can be selected or skipped by name.
+  # In NikOS 0.6.1 that is ai-local, network, music and education, plus the
+  # `never`-tagged opt-ins. base, desktop, theming, github-setup, editors,
+  # cloud-ai-cli, agent-dev and dev-tools have no tags, so they always run and
+  # are what makes this image NikOS rather than stock Xubuntu.
+  #
+  # ai-local pulls Ollama models, which are gigabytes and are better fetched on
+  # the installed machine than shipped in an ISO. The other three are locale
+  # and interest specific. iso-forge fails the build if any of these names stop
+  # matching a real tag, rather than silently building more than was asked for.
   skip_tags:
-    - github-setup
+    - ai-local
+    - network
+    - music
+    - education
   extra_vars:
     nikos_desktop_flavor: xubuntu-minimal

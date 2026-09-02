@@ -1,3 +1,12 @@
+isoforge (2.1.0) unstable; urgency=medium
+
+  * Add an end-to-end NikOS ISO build workflow and an artifact verifier.
+  * Fail the build when a recipe names an Ansible tag the playbook does not
+    define; a skip that matches nothing silently builds more than was asked.
+  * Correct the NikOS recipe's skip_tags, which named an untagged role.
+
+ -- Nikola Reljin <nikola.reljin@gmail.com>  Tue, 01 Sep 2026 00:00:00 +0000
+
 isoforge (2.0.2) unstable; urgency=medium
 
   * Build as a native source package. debian/source/format said 3.0 (quilt),
