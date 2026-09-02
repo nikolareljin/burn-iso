@@ -27,7 +27,10 @@ packages:
 
 ansible:
   repo: https://github.com/nikolareljin/nikos
-  ref: "0.6.1"
+  # Pinned to the branch of nikolareljin/nikos#56 until that merges and tags
+  # 0.6.3. It carries the fix for nvm installing Node into /usr/bin rather than
+  # NVM_DIR, without which this build cannot complete. Same commit either way.
+  ref: "release/0.6.3"
   playbook: site.yml
   inventory: inventory/local
   # site.yml takes nikos_home and nikos_user from the controller's environment,
