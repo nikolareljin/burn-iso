@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning when applicable.
 
+## 2026-09-01 — 2.0.0
+
+### Added
+- **`isoforge build` remasters a base image into a custom installable ISO.** Until now the tool could only write images someone else had built; now `./forge --recipe recipes/nikos.yml` takes a stock Ubuntu or Xubuntu image, applies a recipe and writes an ISO that installs the finished system. The result lands in `download_dir`, so the existing flash path picks it up unchanged.
+- Recipes are YAML: a base image, packages to install or remove, apt sources, PPAs and keys, flatpaks, files to overlay and scripts to run inside the image. A `recipe.local.yml` beside a recipe is merged over it, the same tracked-defaults and untracked-overrides split NikOS uses for `vars/main.yml` and `vars/local.yml`.
+- Optional integrations, either or neither: a NikOS Ansible playbook run inside the image, and a distrodeck export read as a package list so a snapshot of a working machine becomes an ISO.
+- Both Ubuntu casper layouts. A single `filesystem.squashfs` is unpacked, edited and squashed back. The layered `minimal.standard.squashfs` stack is mounted read-only as overlayfs lowerdirs so the build writes into a fresh upperdir, which is then squashed as a new top layer and registered in `install-sources.yaml`; rewriting a layer in place would mean deciding which files belong to which layer.
+- Xubuntu 24.04, Xubuntu 26.04 and Ubuntu 26.04 in the distro catalog.
+- `docs/BUILD.md`, and `scripts/test-forge-{recipe,distrodeck,image}.sh` wired into `./test`.
+
+### Notes
+- Building needs root, about 25 GB of scratch space and 20 to 40 minutes. `--dry-run` validates a recipe with none of that.
+- Boot arguments are read back from the base image with `xorriso -report_el_torito as_mkisofs` rather than hand-written, because hand-written boot flags are the usual reason a remastered image will not start. The base image must stay readable for the whole build.
+- Snaps cannot be installed into a chroot; a `snap` section in a distrodeck export is reported and skipped rather than silently dropped.
+- Arch is not supported. `archiso` shares nothing with casper and needs its own pipeline.
+
 ## 2026-09-01
 
 ### Repository

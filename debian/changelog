@@ -1,3 +1,13 @@
+isoforge (2.0.0-1) unstable; urgency=medium
+
+  * Add `isoforge build`, which remasters an Ubuntu or Xubuntu base image into
+    a custom installable ISO from a recipe.
+  * Recipes describe packages, apt sources, overlay files and chroot hooks, and
+    can drive a NikOS Ansible playbook or read a distrodeck export.
+  * Add Xubuntu 24.04, Xubuntu 26.04 and Ubuntu 26.04 to the distro catalog.
+
+ -- Nikola Reljin <nikola.reljin@gmail.com>  Tue, 01 Sep 2026 00:00:00 +0000
+
 isoforge (1.1.0-1) unstable; urgency=medium
 
   * Repoint source repository references to iso-forge; the package remains isoforge.

@@ -48,6 +48,9 @@ cd "$ROOT_DIR"
 ./scripts/test-cancel-flow.sh
 ./scripts/test-flash-drive-redirect.sh
 ./scripts/test-download-error-state.sh
+./scripts/test-forge-recipe.sh
+./scripts/test-forge-distrodeck.sh
+./scripts/test-forge-image.sh
 
 if command -v jq >/dev/null 2>&1; then
     jq -e '.distros and (.distros | type == "array")' config.json >/dev/null

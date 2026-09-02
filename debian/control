@@ -9,6 +9,9 @@ Rules-Requires-Root: no
 Package: isoforge
 Architecture: all
 Depends: ${misc:Depends}, bash, dialog, curl | wget, jq, coreutils, util-linux
-Description: TUI tool for downloading and flashing ISO images to USB
+Recommends: xorriso, squashfs-tools, rsync, python3-yaml
+Description: TUI tool for downloading, flashing and building ISO images
  Isoforge provides a simple terminal UI for selecting and downloading distros,
- flashing to USB, and creating Ventoy multi-ISO drives.
+ flashing to USB, and creating Ventoy multi-ISO drives. It also builds custom
+ installable images: `isoforge build` remasters an Ubuntu or Xubuntu base image
+ from a recipe describing packages, settings and provisioning.

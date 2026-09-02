@@ -53,6 +53,24 @@ Symlinked entrypoints
 - Helper entrypoints (`./build`, `./test`, `./update`) point to scripts in `./scripts/*.sh`.
 - This keeps the root clean and makes commands shorter to run.
 
+Build A Custom ISO
+
+- `isoforge` also builds installable images, not just writes them:
+  - `sudo ./forge --recipe recipes/example.yml`
+  - or, from an installed package, `sudo isoforge build --recipe /usr/share/isoforge/recipes/example.yml`
+- A recipe names a base image from `config.json` and describes what to change:
+  packages to install or remove, apt sources and PPAs, flatpaks, files to
+  overlay and scripts to run inside the image.
+- It can also drive a NikOS Ansible playbook inside the image, or read a
+  distrodeck export so a snapshot of a working machine becomes an ISO. Both are
+  optional; a recipe with only a package list still produces a working image.
+- Bases: Ubuntu and Xubuntu 24.04 and 26.04, amd64. Both casper layouts are
+  handled, including the layered squashfs that Ubuntu Desktop ships.
+- The finished ISO lands in `download_dir`, so `./isoforge` lists it and flashes
+  it like any other image.
+- Check a recipe without root, a download or a build: `./forge --recipe recipes/example.yml --dry-run`
+- Full guide: `docs/BUILD.md`.
+
 Isoforge for the CLI
 
 - Use `./isoforge` for a simple, Etcher-like flow in your terminal:

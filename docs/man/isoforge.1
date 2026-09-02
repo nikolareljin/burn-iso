@@ -1,18 +1,24 @@
-.TH ISOFORGE 1 "2026-09-01" "isoforge 1.1.0" "User Commands"
+.TH ISOFORGE 1 "2026-09-01" "isoforge 2.0.0" "User Commands"
 .SH NAME
-isoforge \- TUI for downloading and flashing ISOs to USB, including Ventoy multi-ISO.
+isoforge \- downloads Linux images, writes them to USB (single image or Ventoy multi-ISO), and builds custom installable ISOs from a recipe
 .SH SYNOPSIS
 .B isoforge
-[--config PATH] [--version] [--help]
+[build ...] [--config PATH] [--version] [--help]
 .SH DESCRIPTION
-Isoforge TUI for downloading and flashing ISOs to USB, including Ventoy multi-ISO.
+Isoforge downloads Linux images, writes them to USB (single image or Ventoy multi-ISO), and builds custom installable ISOs from a recipe.
 .SH OPTIONS
+.TP
+.B build [ARGS]
+Build a custom ISO from a recipe. Pass --help for its options.
 .TP
 .B --config PATH
 Override config file path.
 .TP
 .B --version
 Print version and exit.
+.TP
+.B -h, --help
+Show help and exit.
 .SH FILES
 .TP
 .I /usr/share/isoforge/config.json
