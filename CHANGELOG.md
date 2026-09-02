@@ -7,6 +7,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 2026-09-01 — 2.1.0
 
 ### Added
+- **The NikOS recipe pins an immutable tag.** What a recipe pins decides what ends up in the image, so it has to name something that cannot change underneath it. `scripts/test-forge-nikos.sh` now requires a bare `X.Y.Z`, so a branch or a moving ref cannot be pinned by accident.
 - **A real NikOS ISO build, verified end to end.** `.github/workflows/nikos-iso.yml` downloads a stock Xubuntu 24.04.4 image, runs `recipes/nikos.yml` against it, and checks the result. Nothing in it is mocked. It runs on demand and automatically when the builder, the recipes or the workflow change, since that is when "does a real build still work?" is worth an hour.
 - `scripts/verify-nikos-iso.sh` inspects a finished image rather than trusting the build log: ISO 9660, an El Torito boot record, the recipe's volume id, a plausible size, and then inside the root filesystem the NikOS CLI, its Plymouth theme, the Xfce session, LightDM, desktop configuration in `/etc/skel`, an emptied `/etc/machine-id` and no leftover `policy-rc.d`.
 - `scripts/test-forge-nikos.sh` runs on every pull request and covers what the hour-long build should not be the first to catch: the recipe's base, output, `/etc/skel` handoff and pinned playbook ref, and the tag guard below.

@@ -171,7 +171,7 @@ first boot instead.
 ```yaml
 ansible:
   repo: https://github.com/nikolareljin/nikos
-  ref: "0.6.1"
+  ref: "0.6.3"          # an immutable tag, never a branch
   playbook: site.yml
   skel_home: /etc/skel
   skip_tags: [github-setup]

@@ -55,10 +55,13 @@ check "per-user configuration targets /etc/skel" \
 check "it provisions from the NikOS repository" \
   "$(recipe_get '.ansible.repo')" "https://github.com/nikolareljin/nikos"
 
-if [[ "$(recipe_get '.ansible.ref // ""')" != "" ]]; then
-  ok "the playbook is pinned to a ref rather than tracking a branch"
+# A branch can change under a recipe, and what the recipe pins decides what
+# ends up in the image, so the pin has to be immutable. A bare X.Y.Z is a tag.
+ref=$(recipe_get '.ansible.ref // ""')
+if [[ "$ref" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  ok "the playbook is pinned to an immutable tag ($ref)"
 else
-  bad "the playbook is pinned to a ref rather than tracking a branch"
+  bad "the playbook is pinned to an immutable tag (got '$ref')"
 fi
 
 # github-setup is a role with no `tags:` key, so naming it in skip_tags does
