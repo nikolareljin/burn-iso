@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # SCRIPT: isoforge.sh
 # DESCRIPTION: Isoforge downloads Linux images, writes them to USB (single image or Ventoy multi-ISO), and builds custom installable ISOs from a recipe.
-# USAGE: isoforge [OPTIONS] | isoforge <command> [COMMAND_OPTIONS]
+# USAGE: isoforge [OPTIONS] [COMMAND [COMMAND_OPTIONS]]
 # EXAMPLE: isoforge --config ./config.json
 # EXAMPLE: sudo isoforge build --recipe recipes/nikos.yml
 # PARAMETERS:
-#   download      Download one or more ISOs from config.json.
-#   burn          Write an ISO from download_dir, or a browsed local ISO, to a drive.
-#   build         Build a custom installable ISO from a recipe.
-#   setup         Install project dependencies.
-#   help          Show command help.
-#   --config PATH Override config file path for the TUI flow.
-#   --version     Print version and exit.
-#   -h, --help    Show help and exit.
+#   download        Download one or more ISOs from config.json. Options: --config PATH, -h, --help.
+#   burn            Write an ISO from download_dir, or a browsed local ISO, to a drive. Options: --config PATH, -h, --help.
+#   build           Build a custom installable ISO from a recipe. Options: -r/--recipe PATH, -o/--output DIR, --config PATH, --work-dir DIR, --dry-run, --smoke-test, --keep, --version, -h/--help.
+#   setup           Install project dependencies. Parameters: PACKAGE. Options: -h, --help.
+#   help [COMMAND]  Show top-level help or command help for download, burn, build, or setup.
+#   --config PATH   Override config file path for the TUI flow.
+#   --version       Print version and exit.
+#   -h, --help      Show help and exit.
 set -euo pipefail
 
 # CLI Isoforge-like interface using dialog
