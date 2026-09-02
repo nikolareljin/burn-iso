@@ -965,5 +965,8 @@ main_menu() {
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   parse_cli_args "$@"
+  if [[ "${ISOFORGE_DISABLE_EXIT_TRAP:-0}" != "1" ]]; then
+    trap reset_tui EXIT INT TERM
+  fi
   main_menu
 fi

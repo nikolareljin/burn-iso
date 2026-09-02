@@ -1,28 +1,121 @@
-.TH ISOFORGE 1 "2026-09-01" "isoforge 2.1.0" "User Commands"
+.TH ISOFORGE 1 "2026-09-02" "isoforge 2.1.0" "User Commands"
 .SH NAME
-isoforge \- downloads Linux images, writes them to USB (single image or Ventoy multi-ISO), and builds custom installable ISOs from a recipe
+isoforge \- download Linux images, write them to USB, and build custom installable ISOs
 .SH SYNOPSIS
 .B isoforge
-[build ...] [--config PATH] [--version] [--help]
+[OPTIONS]
+.br
+.B isoforge
+.I command
+[COMMAND_OPTIONS]
+.br
+.B isoforge help
+[I command]
 .SH DESCRIPTION
-Isoforge downloads Linux images, writes them to USB (single image or Ventoy multi-ISO), and builds custom installable ISOs from a recipe.
-.SH OPTIONS
+Isoforge downloads Linux images from a configured catalog, writes ISO images to USB devices, and builds custom installable ISO images from recipes.
+.SH COMMANDS
 .TP
-.B build [ARGS]
-Build a custom ISO from a recipe. Pass --help for its options.
+.B download
+Download one or more ISOs from the configured distro catalog.
+.TP
+.B burn
+Write a selected ISO from the configured download directory, or a browsed local ISO, to a selected drive.
+.TP
+.B build
+Build a custom installable ISO from a base image and a recipe.
+.TP
+.B setup
+Install project dependencies.
+.TP
+.B help
+Show top-level help or command-specific help.
+.SH TOP-LEVEL OPTIONS
 .TP
 .B --config PATH
-Override config file path.
+Override config file path for the TUI flow.
 .TP
 .B --version
 Print version and exit.
 .TP
 .B -h, --help
 Show help and exit.
+.SH DOWNLOAD OPTIONS
+.TP
+.B --config PATH
+Override config file path.
+.TP
+.B -h, --help
+Show download help and exit.
+.SH BURN OPTIONS
+.TP
+.B --config PATH
+Override config file path.
+.TP
+.B -h, --help
+Show burn help and exit.
+.SH BUILD OPTIONS
+.TP
+.B -r, --recipe PATH
+Recipe to build. Required.
+.TP
+.B -o, --output DIR
+Where to write the ISO. Defaults to \fBdownload_dir\fR from config.json.
+.TP
+.B --config PATH
+Override config file path.
+.TP
+.B --work-dir DIR
+Scratch space for build. Defaults to /var/tmp/isoforge.
+.TP
+.B --dry-run
+Resolve and validate recipe, then stop. Needs no root.
+.TP
+.B --smoke-test
+Boot finished image under QEMU.
+.TP
+.B --keep
+Leave work directory in place for inspection.
+.TP
+.B --version
+Print version and exit.
+.TP
+.B -h, --help
+Show build help and exit.
+.SH SETUP PARAMETERS
+.TP
+.B PACKAGE
+Optional package names to install instead of default dependency set.
+.SH CONFIGURATION
+.TP
+.B download_dir
+Directory where downloaded images are saved and where burn scans for .iso files.
+.TP
+.B distros
+Array of \fB{ id, label, url }\fR items shown by download selectors.
+.TP
+.B block_device_filter
+Drive filter used by burn. Use \fBusb\fR for USB/removable devices, or \fBany\fR.
+.SH ENVIRONMENT
+.TP
+.B ALLOW_INSECURE_HTTP_DOWNLOADS=1
+Allow http:// download URLs from config.json. Disabled by default.
 .SH FILES
 .TP
 .I /usr/share/isoforge/config.json
 Default configuration when installed system-wide.
 .TP
 .I $HOME/Downloads/iso_images
-Default download directory used when the \fBdownload_dir\fR configuration option is missing or empty.
+Default download directory used when \fBdownload_dir\fR is missing or empty.
+.SH EXAMPLES
+.TP
+.B isoforge --config ./config.json
+Run the main TUI using a custom config file.
+.TP
+.B isoforge download
+Download images from configured catalog.
+.TP
+.B sudo isoforge burn
+Write a selected ISO to a selected drive.
+.TP
+.B sudo isoforge build --recipe recipes/example.yml --dry-run
+Validate build recipe without writing an image.
