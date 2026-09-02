@@ -79,13 +79,24 @@ with open(path) as fh:
 
 changed = 0
 
+SUFFIX = ".squashfs"
+
+
+def stem_of(value):
+    return value[:-len(SUFFIX)] if value.endswith(SUFFIX) else value
+
+
 def walk(node):
     global changed
     if isinstance(node, dict):
         for key, value in node.items():
-            # install-sources.yaml names the layer by stem in `path`, and some
-            # releases repeat it in `id`.
-            if key in ("path", "id") and isinstance(value, str) and value == old:
+            # `path` carries the file name, extension included, and some
+            # releases repeat the bare stem in `id`. Compare on stems and write
+            # back in whichever form was already there.
+            if key == "path" and isinstance(value, str) and stem_of(value) == stem_of(old):
+                node[key] = new + SUFFIX if value.endswith(SUFFIX) else new
+                changed += 1
+            elif key == "id" and isinstance(value, str) and stem_of(value) == stem_of(old):
                 node[key] = new
                 changed += 1
             else:
@@ -158,6 +169,9 @@ if not found:
     sys.exit(3)
 # Prefer the entry marked default, else the first one.
 found.sort(key=lambda pair: not pair[0])
-print(found[0][1])
+# Ubuntu writes the file name, extension and all: `path: minimal.standard.squashfs`.
+# Everything downstream works in stems, so strip it.
+path = found[0][1]
+print(path[:-len(".squashfs")] if path.endswith(".squashfs") else path)
 PYEOF
 }

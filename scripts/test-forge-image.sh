@@ -68,15 +68,28 @@ make_base() {
       printf 'live layer\n' >"$root/lower3/live-marker"
       mksquashfs "$root/lower3" "$root/tree/casper/minimal.standard.live.squashfs" -noappend -quiet >/dev/null
       cat >"$root/tree/casper/install-sources.yaml" <<'YAML'
+- default: false
+  description:
+    en: A minimal installation.
+  id: synthetic-minimal
+  locale_support: langpack
+  name:
+    en: Synthetic Minimal
+  path: minimal.squashfs
+  size: 1024
+  type: fsimage-layered
+  variant: desktop
 - default: true
   description:
-    en: Synthetic
-  id: synthetic
-  locale_support: none
+    en: A full featured installation.
+  id: synthetic-desktop
+  locale_support: langpack
   name:
-    en: Synthetic
-  path: minimal.standard
+    en: Synthetic Desktop
+  path: minimal.standard.squashfs
+  size: 2048
   type: fsimage-layered
+  variant: desktop
 YAML
       ;;
   esac
@@ -167,9 +180,14 @@ if forge_register_layer "$work2/iso" "minimal.standard.isoforge" >/dev/null 2>&1
 else
   bad "install-sources.yaml is repointed at the new layer"
 fi
-check "the source now names the new layer" \
-  "$(python3 -c 'import sys,yaml; print(yaml.safe_load(open(sys.argv[1]))[0]["path"])' "$work2/iso/casper/install-sources.yaml" 2>/dev/null)" \
-  "minimal.standard.isoforge"
+# The default entry is the one that moves, and it keeps the .squashfs form the
+# file already used. The other entry must not be touched.
+check "the default source now names the new layer" \
+  "$(python3 -c 'import sys,yaml; d=yaml.safe_load(open(sys.argv[1])); print([e["path"] for e in d if e.get("default")][0])' "$work2/iso/casper/install-sources.yaml" 2>/dev/null)" \
+  "minimal.standard.isoforge.squashfs"
+check "the other source is left alone" \
+  "$(python3 -c 'import sys,yaml; d=yaml.safe_load(open(sys.argv[1])); print([e["path"] for e in d if not e.get("default")][0])' "$work2/iso/casper/install-sources.yaml" 2>/dev/null)" \
+  "minimal.squashfs"
 
 # A layered image whose install-sources.yaml cannot be repointed must fail the
 # build: the installer would keep the original layer and drop everything added.
@@ -182,7 +200,7 @@ fi
 
 cat >"$work2/iso/casper/install-sources.yaml" <<'YAML'
 - id: unrelated
-  path: something-else
+  path: something-else.squashfs
 YAML
 if forge_register_layer "$work2/iso" "minimal.standard.isoforge" >/dev/null 2>&1; then
   bad "an install-sources.yaml that cannot be repointed fails the build"
@@ -191,7 +209,7 @@ else
 fi
 check "the original install-sources.yaml is restored on failure" \
   "$(python3 -c 'import sys,yaml; print(yaml.safe_load(open(sys.argv[1]))[0]["path"])' "$work2/iso/casper/install-sources.yaml" 2>/dev/null)" \
-  "something-else"
+  "something-else.squashfs"
 
 # --- the volume id rewrite is literal ---------------------------------------
 # A real base volume id looks like "Ubuntu 24.04.3 LTS amd64": as a regex those
