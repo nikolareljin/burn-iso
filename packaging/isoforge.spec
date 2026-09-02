@@ -1,5 +1,5 @@
 Name:           isoforge
-Version:        2.0.0
+Version:        2.0.1
 Release:        1%{?dist}
 Summary:        TUI tool for downloading and flashing ISO images to USB
 License:        MIT
@@ -44,6 +44,10 @@ install -m 0644 docs/man/isoforge.1 %{buildroot}/usr/share/man/man1/isoforge.1
 /usr/share/man/man1/isoforge.1
 
 %changelog
+* Tue Sep 02 2026 Nikola Reljin <nikola.reljin@gmail.com> - 2.0.1-1
+- Grant the release workflow the permissions its called workflows declare, so
+  the deb, PPA, RPM and Homebrew jobs can run at all
+
 * Tue Sep 01 2026 Nikola Reljin <nikola.reljin@gmail.com> - 2.0.0-1
 - Add `isoforge build`, which remasters an Ubuntu or Xubuntu base image into a
   custom installable ISO from a recipe

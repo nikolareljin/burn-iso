@@ -3,6 +3,15 @@ on:
   push:
     branches: [ main ]
 
+# GitHub validates a called workflow's declared permissions against what the
+# caller grants, before any job runs. ci-helpers' deb-build.yml declares
+# contents: write, this repository's default workflow permission is read, and
+# main.yml granted nothing, so every run was rejected at startup and none of
+# the packaging jobs had ever executed. Read by default, write only for the
+# job whose callee asks for it.
+permissions:
+  contents: read
+
 jobs:
   # ci-helpers/homebrew-package.yml defaults its tarball URL to a v-prefixed
   # tag, but ci-helpers/auto-tag-release.yml creates bare X.Y.Z tags. Read
@@ -17,6 +26,8 @@ jobs:
         run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
   deb:
+    permissions:
+      contents: write
     uses: nikolareljin/ci-helpers/.github/workflows/deb-build.yml@production
     with:
       working_directory: "."
