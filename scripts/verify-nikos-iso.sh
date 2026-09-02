@@ -202,6 +202,20 @@ for layer in "${layers[@]}"; do
     tail -5 "$WORK/unsquash.log" >&2
     continue
   fi
+  # overlayfs records a deleted path in an upper layer as a character device
+  # with major:minor 0:0. Copying that over the directory it deletes is
+  # impossible and beside the point: it means "this is gone". Apply the
+  # deletion, drop the marker, then merge what is left.
+  #
+  # A real character device is left alone; only 0:0 is a whiteout.
+  while IFS= read -r -d '' wh; do
+    if [[ "$(stat -c '%t:%T' "$wh" 2>/dev/null)" == "0:0" ]]; then
+      rel="${wh#"$WORK/layer$i/"}"
+      rm -rf "${WORK:?}/root/$rel"
+      rm -f "$wh"
+    fi
+  done < <(find "$WORK/layer$i" -type c -print0 2>/dev/null)
+
   if ! rsync -a "$WORK/layer$i/" "$WORK/root/" 2>"$WORK/merge.log"; then
     if ! cp -a "$WORK/layer$i/." "$WORK/root/" 2>>"$WORK/merge.log"; then
       # Reported rather than ignored: an incomplete merge makes every
