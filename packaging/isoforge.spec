@@ -1,10 +1,11 @@
 Name:           isoforge
-Version:        2.0.1
+Version:        2.0.2
 Release:        1%{?dist}
 Summary:        TUI tool for downloading and flashing ISO images to USB
 License:        MIT
 URL:            https://github.com/nikolareljin/iso-forge
 BuildArch:      noarch
+Source0:        %{name}-%{version}.tar.gz
 
 Requires:       bash, dialog, curl, jq, coreutils, util-linux
 Recommends:     xorriso, squashfs-tools, rsync, python3dist(pyyaml)
@@ -44,6 +45,10 @@ install -m 0644 docs/man/isoforge.1 %{buildroot}/usr/share/man/man1/isoforge.1
 /usr/share/man/man1/isoforge.1
 
 %changelog
+* Tue Sep 01 2026 Nikola Reljin <nikola.reljin@gmail.com> - 2.0.2-1
+- Declare Source0, which %%autosetup requires
+- Build the Debian package as a native source package
+
 * Tue Sep 01 2026 Nikola Reljin <nikola.reljin@gmail.com> - 2.0.1-1
 - Grant the release workflow the permissions its called workflows declare, so
   the deb, PPA, RPM and Homebrew jobs can run at all

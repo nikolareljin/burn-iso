@@ -1,3 +1,12 @@
+isoforge (2.0.2) unstable; urgency=medium
+
+  * Build as a native source package. debian/source/format said 3.0 (quilt),
+    which requires an upstream tarball this project does not produce, so
+    dpkg-source refused to build.
+  * Declare Source0 in the RPM spec, which %autosetup requires.
+
+ -- Nikola Reljin <nikola.reljin@gmail.com>  Tue, 01 Sep 2026 00:00:00 +0000
+
 isoforge (2.0.1-1) unstable; urgency=medium
 
   * Grant the release workflow the permissions its called workflows declare.
