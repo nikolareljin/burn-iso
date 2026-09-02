@@ -16,8 +16,21 @@ if [[ -z "$ISO" || ! -f "$ISO" ]]; then
   exit 2
 fi
 
+# Run this as root. unsquashfs has to recreate device nodes to unpack a root
+# filesystem, including the character devices overlayfs uses as whiteouts in a
+# layered image, and unprivileged it skips them and then dies on the first
+# hardlink to one:
+#
+#   create_inode: could not create character device ..., because you're not superuser!
+#   FATAL ERROR: create_inode: failed to create hardlink, because No such file or directory
+#
 # Several gigabytes land here: the extracted image, one unpacked layer at a
 # time, and the merged filesystem. Set TMPDIR to move it off a small /tmp.
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "WARNING: not running as root; unpacking a layered image will fail." >&2
+  echo "         re-run with: sudo env TMPDIR=\"\$TMPDIR\" $0 $*" >&2
+fi
+
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -200,8 +213,17 @@ for layer in "${layers[@]}"; do
   rm -rf "$WORK/layer$i"
 done
 
-if [[ ! -d "$WORK/root" ]]; then
-  bad "the root filesystem unpacks"
+# Checking the directory exists is not enough: mkdir made it, so a run where
+# every layer failed to unpack still passed here and then reported four
+# separate missing-file failures, which points at the image rather than at the
+# unpack that actually broke.
+missing_structure=()
+for d in usr/bin usr/sbin etc var; do
+  [[ -d "$WORK/root/$d" ]] || missing_structure+=("/$d")
+done
+if ((${#missing_structure[@]})); then
+  bad "the root filesystem unpacks (no ${missing_structure[*]})"
+  echo "     nothing below this point is meaningful; the layers did not unpack." >&2
   printf '\n%d passed, %d failed\n' "$pass" "$fail"
   exit 1
 fi

@@ -116,13 +116,14 @@ jobs:
         env:
           ISO: ${{ steps.build.outputs.iso }}
         run: |
-          # Unpacking the image and its layers needs room, and /tmp is not the
-          # place for it. Run unprivileged with TMPDIR set: sudo resets the
-          # environment by default, so `sudo TMPDIR=... cmd` would silently
-          # drop it and extract to /tmp anyway. Nothing here needs root.
+          # Root, and TMPDIR pointed at the large disk. Both are needed, and
+          # neither `sudo TMPDIR=... cmd` nor `TMPDIR=... cmd` gives both:
+          # sudo resets the environment so the first drops TMPDIR, and the
+          # second cannot unpack a root filesystem at all, because unsquashfs
+          # has to recreate device nodes. `sudo env` sets the variable inside
+          # the elevated environment and does not depend on sudoers config.
           sudo mkdir -p /mnt/verify
-          sudo chown "$USER" /mnt/verify
-          TMPDIR=/mnt/verify ./scripts/verify-nikos-iso.sh "$ISO"
+          sudo env TMPDIR=/mnt/verify ./scripts/verify-nikos-iso.sh "$ISO"
 
       # Proves the firmware hands off to a bootloader. It does not prove the
       # installer completes, and the job says so rather than implying otherwise.
