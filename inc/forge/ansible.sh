@@ -16,11 +16,12 @@ forge_ansible() {
   local rootfs="$1"
   forge_ansible_available || return 0
 
-  local repo ref playbook dest
+  local repo ref playbook dest skel_home
   repo=$(recipe_get '.ansible.repo')
   ref=$(recipe_get '.ansible.ref // ""')
   playbook=$(recipe_get '.ansible.playbook')
   dest=$(recipe_get '.ansible.dest // "/opt/nikos"')
+  skel_home=$(recipe_get '.ansible.skel_home // "/etc/skel"')
 
   log_info "Provisioning with Ansible: $repo${ref:+ @ $ref}"
 
@@ -38,11 +39,14 @@ forge_ansible() {
   }
 
   # Requirements are optional; a playbook with no collections still works.
-  forge_in_chroot_soft "cd $(forge_q "$dest") && [ -f requirements.yml ] && ansible-galaxy collection install -r requirements.yml || true"
+  # HOME is set here for the same reason it is set for the run below: galaxy
+  # installs collections under $HOME/.ansible and ansible-playbook looks for
+  # them in the same place, so installing with one HOME and running with
+  # another loses them. That failed a real build with "couldn't resolve
+  # module/action 'community.general.timezone'".
+  forge_in_chroot_soft "export HOME=$(forge_q "$skel_home") && cd $(forge_q "$dest") && [ -f requirements.yml ] && ansible-galaxy collection install -r requirements.yml || true"
 
   local -a args=()
-  local skel_home
-  skel_home=$(recipe_get '.ansible.skel_home // "/etc/skel"')
 
   # One JSON blob rather than a series of key=value pairs. ansible parses
   # `-e key=value` as a string no matter what it looks like, so a recipe could

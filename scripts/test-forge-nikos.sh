@@ -152,6 +152,13 @@ else
 fi
 FAKE_TAGS_MODE=normal
 
+# Galaxy installs collections under $HOME/.ansible and ansible-playbook reads
+# them from there, so the two must run with the same HOME. Installing with one
+# and running with another lost the collections and failed a real build with
+# "couldn't resolve module/action 'community.general.timezone'".
+homes=$(grep -c 'export HOME=' "$REPO_ROOT/inc/forge/ansible.sh")
+check "galaxy and the playbook both run with HOME set" "$homes" "2"
+
 # --- the verifier ships and is runnable ------------------------------------
 if [[ -x "$REPO_ROOT/scripts/verify-nikos-iso.sh" ]]; then
   ok "the ISO verifier is executable"
