@@ -250,6 +250,18 @@ guessing at `-as mkisofs` arguments, the build asks xorriso to report the ones
 that reproduce the base image's boot setup and reuses them. The base image has
 to stay readable at its path for the whole build, because that report names it.
 
+## Reproducibility
+
+Commands run inside the image start from an empty environment: `PATH`, `HOME`,
+`USER`, `LOGNAME`, `SHELL`, `TERM`, `LANG`, `LC_ALL` and `DEBIAN_FRONTEND`, and
+nothing else. Whatever the caller has exported does not reach the build, so the
+same recipe on the same base produces the same image whether it runs on a
+workstation or a CI runner.
+
+That is not theoretical: an early run of the NikOS build failed because
+`NVM_DIR` from a CI runner reached the chroot and pointed an installer at a
+host path.
+
 ## When a build fails
 
 The work directory is left in place. Every mount the build made is released on

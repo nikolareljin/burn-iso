@@ -239,6 +239,33 @@ rm -f "$TMP/arch/.disk/info"
 check "the architecture falls back to the filename" "$(forge_detect_arch "$TMP/arch" /tmp/thing-arm64.iso)" "arm64"
 check "an unknown architecture reads as empty" "$(forge_detect_arch "$TMP/arch" /tmp/mystery.iso)" ""
 
+# --- the chroot must not inherit the build host's environment ---------------
+# A real build failed because NVM_DIR from a CI runner reached the chroot and
+# pointed an installer at a host path. Anything not on the allow-list below
+# would make an image depend on who built it.
+# shellcheck source=/dev/null
+source "$REPO_ROOT/inc/forge/chroot.sh"
+allowed=$(sed -n '/env -i/,/bin\/bash -c/p' "$REPO_ROOT/inc/forge/chroot.sh" | grep -oE '^ *[A-Z_]+=' | tr -d ' =')
+for leak in NVM_DIR GITHUB_ACTIONS SUDO_USER http_proxy PYTHONPATH; do
+  if grep -qx -- "$leak" <<<"$allowed"; then
+    bad "$leak is not passed into the chroot"
+  else
+    ok "$leak is not passed into the chroot"
+  fi
+done
+for needed in PATH HOME LANG DEBIAN_FRONTEND; do
+  if grep -qx -- "$needed" <<<"$allowed"; then
+    ok "$needed is passed into the chroot"
+  else
+    bad "$needed is passed into the chroot"
+  fi
+done
+if grep -q 'env -i' "$REPO_ROOT/inc/forge/chroot.sh"; then
+  ok "the chroot starts from an empty environment"
+else
+  bad "the chroot starts from an empty environment"
+fi
+
 # --- a base that is not a live image ---------------------------------------
 mkdir -p "$TMP/notlive/tree/random"
 printf 'x\n' >"$TMP/notlive/tree/random/file"

@@ -87,12 +87,24 @@ forge_q() {
   printf '%s' "${out# }"
 }
 
+# `env -i` rather than `env`: without it the build host's environment reaches
+# the chroot, and the image then depends on who built it. A real build failed
+# exactly this way, with NVM_DIR=/home/runner/.nvm inherited from a CI runner
+# pointing an installer at a directory that does not exist inside the image.
+# The same leak would carry SUDO_*, GITHUB_*, proxy settings and a host HOME.
+#
+# Everything the chroot is allowed to see is listed here.
 forge_in_chroot() {
-  chroot "$FORGE_CHROOT_DIR" /usr/bin/env \
+  chroot "$FORGE_CHROOT_DIR" /usr/bin/env -i \
     DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
     PATH=/usr/sbin:/usr/bin:/sbin:/bin \
+    HOME=/root \
+    USER=root \
+    LOGNAME=root \
+    SHELL=/bin/bash \
+    TERM="${TERM:-dumb}" \
     /bin/bash -c "$1"
 }
 
