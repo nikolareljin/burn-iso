@@ -180,6 +180,13 @@ theming role writes into that user's `~/.config`. In a chroot there is no such
 user and the environment resolves to root, so `skel_home` points the per-user
 half at `/etc/skel`. Every account the installer creates then inherits it.
 
+`HOME` is set to the same path for the playbook run. Roles install per-user
+tooling by shelling out to installers that honour `$HOME` while their `creates:`
+guards look under the playbook's own home variable, so the two disagreeing
+means an installer writes to one place and the next task reads the other.
+NikOS's nvm step failed exactly that way during development, installing into
+`/root/.nvm` and then failing to source `/etc/skel/.nvm/nvm.sh`.
+
 Tasks that genuinely need a live session cannot run at build time. NikOS
 already guards its `xfconf-query` calls with `failed_when: false`, so they
 no-op; anything else belongs in `skip_tags`, and NikOS's own autostart pass is

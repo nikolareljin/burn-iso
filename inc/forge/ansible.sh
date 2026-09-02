@@ -66,9 +66,20 @@ forge_ansible() {
   forge_ansible_check_tags "$dest" "$playbook" "$inventory" tags "${tags[@]}" || return $?
   forge_ansible_check_tags "$dest" "$playbook" "$inventory" skip_tags "${skips[@]}" || return $?
 
+  # HOME has to agree with skel_home for the whole run. Roles install per-user
+  # tooling by shelling out to installers that honour $HOME, while their
+  # `creates:` guards and later tasks look under the playbook's own home
+  # variable. With the two disagreeing, an installer writes to one place and
+  # the next task reads the other: NikOS's nvm step failed exactly that way,
+  # installing into /root/.nvm and then failing to source /etc/skel/.nvm/nvm.sh.
+  #
+  # Pointing HOME at /etc/skel is also what the result should be. Anything a
+  # role leaves in the user's home is then copied into every account the
+  # installer creates, which is the entire reason skel_home exists.
+  #
   # --connection=local because the chroot is the target; ansible must not try
   # to ssh anywhere.
-  local cmd="cd $(forge_q "$dest") && ansible-playbook $(forge_q "$playbook") -i $(forge_q "$inventory") --connection=local"
+  local cmd="export HOME=$(forge_q "$skel_home") && cd $(forge_q "$dest") && ansible-playbook $(forge_q "$playbook") -i $(forge_q "$inventory") --connection=local"
   local a
   for a in "${args[@]}"; do
     cmd+=" $(printf '%q' "$a")"
