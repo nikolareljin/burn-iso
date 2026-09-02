@@ -310,6 +310,22 @@ else
   bad "the chroot starts from an empty environment"
 fi
 
+# The root filesystem is squashed between cleanup and teardown, so anything the
+# build undoes only on the way out ships inside the image. A policy-rc.d
+# returning 101 would refuse to start services on the installed machine.
+cleanup_line=$(grep -n 'forge_chroot_cleanup' "$REPO_ROOT/inc/forge.sh" | grep -v '^.*#' | head -1 | cut -d: -f1)
+repack_line=$(grep -n 'forge_repack ' "$REPO_ROOT/inc/forge.sh" | head -1 | cut -d: -f1)
+if [[ -n "$cleanup_line" && -n "$repack_line" ]] && (( cleanup_line < repack_line )); then
+  ok "the chroot is cleaned before the filesystem is squashed"
+else
+  bad "the chroot is cleaned before the filesystem is squashed"
+fi
+if grep -q 'forge_chroot_unscaffold' "$REPO_ROOT/inc/forge/chroot.sh"; then
+  ok "cleanup removes the build's own scaffolding"
+else
+  bad "cleanup removes the build's own scaffolding"
+fi
+
 # --- a base that is not a live image ---------------------------------------
 mkdir -p "$TMP/notlive/tree/random"
 printf 'x\n' >"$TMP/notlive/tree/random/file"

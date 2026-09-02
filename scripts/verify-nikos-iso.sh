@@ -217,10 +217,21 @@ else
   bad "/etc/machine-id is empty, so installs do not share an identity"
 fi
 
+# policy-rc.d returning 101 would refuse to start services on the installed
+# machine, so it must not survive into the image.
 if [[ -e "$WORK/root/usr/sbin/policy-rc.d" ]]; then
   bad "the build's policy-rc.d was removed"
 else
   ok "the build's policy-rc.d was removed"
+fi
+
+# The build swaps in its own resolver to reach the network and puts the
+# original back. The backup surviving means the swap was never undone, and the
+# image is carrying the build host's DNS configuration.
+if [[ -e "$WORK/root/etc/resolv.conf.isoforge-orig" ]]; then
+  bad "the build's resolv.conf backup was cleaned up"
+else
+  ok "the build's resolv.conf backup was cleaned up"
 fi
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
