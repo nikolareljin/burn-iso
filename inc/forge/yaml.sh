@@ -122,3 +122,39 @@ if old in text:
         fh.write(text.replace(old, new))
 PYEOF
 }
+
+# The stem install-sources.yaml points its layered source at. On Ubuntu that is
+# the installed system's top layer, which is not the topmost squashfs on the
+# image: minimal.standard.live sits above it and exists only for the live
+# session.
+forge_yaml_install_source_stem() {
+  local path="$1"
+  [[ -f "$path" ]] || return 1
+  [[ "$(forge_yaml_backend)" == "python" ]] || return 1
+
+  python3 - "$path" <<'PYEOF'
+import sys, yaml
+
+with open(sys.argv[1]) as fh:
+    doc = yaml.safe_load(fh)
+
+found = []
+
+def walk(node):
+    if isinstance(node, dict):
+        if node.get("type") == "fsimage-layered" and isinstance(node.get("path"), str):
+            found.append((node.get("default") is True, node["path"]))
+        for value in node.values():
+            walk(value)
+    elif isinstance(node, list):
+        for item in node:
+            walk(item)
+
+walk(doc)
+if not found:
+    sys.exit(3)
+# Prefer the entry marked default, else the first one.
+found.sort(key=lambda pair: not pair[0])
+print(found[0][1])
+PYEOF
+}

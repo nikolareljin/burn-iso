@@ -61,6 +61,12 @@ make_base() {
       printf 'standard layer\n' >"$root/lower2/marker"
       mksquashfs "$root/rootfs" "$root/tree/casper/minimal.squashfs" -noappend -quiet >/dev/null
       mksquashfs "$root/lower2" "$root/tree/casper/minimal.standard.squashfs" -noappend -quiet >/dev/null
+      # Three layers like a real Ubuntu image, where the installer uses
+      # minimal.standard and minimal.standard.live exists only for the live
+      # session and sits above it.
+      mkdir -p "$root/lower3"
+      printf 'live layer\n' >"$root/lower3/live-marker"
+      mksquashfs "$root/lower3" "$root/tree/casper/minimal.standard.live.squashfs" -noappend -quiet >/dev/null
       cat >"$root/tree/casper/install-sources.yaml" <<'YAML'
 - default: true
   description:
@@ -146,8 +152,13 @@ mkdir -p "$work2"
 forge_extract_iso "$base2" "$work2/iso" >/dev/null 2>&1
 forge_detect_layout "$work2/iso" >/dev/null 2>&1
 check "stacked squashfs is detected as 'layered'" "$FORGE_LAYOUT" "layered"
-check "every layer is collected" "${#FORGE_LAYER_PATHS[@]}" "2"
-check "the top layer is the longest-named one" "$(basename "$FORGE_TOP_LAYER")" "minimal.standard.squashfs"
+# The image has three layers, but the installer uses minimal.standard, so the
+# live layer above it is dropped. Building on top of the live layer would put
+# the customization where the installer never looks.
+check "layers above the install source are dropped" "${#FORGE_LAYER_PATHS[@]}" "2"
+check "the build sits on the installer's layer" "$(basename "$FORGE_TOP_LAYER")" "minimal.standard.squashfs"
+check "the install source stem is read from install-sources.yaml" \
+  "$(forge_yaml_install_source_stem "$work2/iso/casper/install-sources.yaml")" "minimal.standard"
 
 # The new layer must be registered or the installer carries it and ignores it.
 FORGE_TOP_LAYER="$work2/iso/casper/minimal.standard.squashfs"

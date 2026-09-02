@@ -48,6 +48,13 @@ Ubuntu and Xubuntu 24.04 and 26.04, amd64. Both casper layouts are handled:
   the build writes into a fresh upperdir. The result is squashed as a new top
   layer and registered in `install-sources.yaml`.
 
+  Which layer it stacks onto matters. The topmost squashfs is not the one the
+  installer uses: Ubuntu ships `minimal.standard.live` above `minimal.standard`,
+  and the live layer exists only for the session you boot into. Building on top
+  of it would put the customization somewhere the installer never reads, so the
+  build follows `install-sources.yaml` and ignores any layer above the one it
+  names.
+
 For a layered image, the new layer has to be registered in
 `install-sources.yaml` or the installer keeps using the original layer and
 drops everything the build added. If that file is missing, or its layered
