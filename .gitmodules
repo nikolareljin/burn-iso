@@ -2,3 +2,10 @@
 	path = scripts/script-helpers
 	url = https://github.com/nikolareljin/script-helpers.git
 	branch = production
+	# Tools that write into a checkout leave files inside this one, and the
+	# pinned commit predates script-helpers ignoring them itself. Untracked
+	# content there is never ours to commit — a submodule records a pointer,
+	# not files — so reporting it only trains people to ignore `git status`.
+	# `untracked` rather than `dirty`: a modified tracked file, or a moved
+	# pointer, still shows.
+	ignore = untracked
