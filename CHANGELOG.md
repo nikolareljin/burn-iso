@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning when applicable.
 
+## 2026-09-03 — 2.1.2
+
+### Fixed
+- **The deb job could not upload what it built.** `dpkg-buildpackage` writes the `.deb` to the parent of the source directory, which is outside the workspace, and `upload-artifact` refuses a path containing `..`: `Invalid pattern '../*.deb'`. The package had been building fine and then failing on the upload. The build command now moves the artifacts into `dist/` and the glob points there.
+- **The rpm job died in `%prep`.** `rpm-build.yml` passes `working_directory` straight into rpmbuild's `_topdir`, and `"."` made it relative, so `%prep` resolved `_builddir` to an absolute `/packaging/rpm/build/BUILD` that does not exist: `Bad exit status from /var/tmp/rpm-tmp.* (%prep)`. It now passes `${{ github.workspace }}`, which is the same directory spelled so rpmbuild can use it — and is what the helper defaults to when nothing overrides it.
+
+Both were diagnosed when the release workflow first ran and then left while other work took priority. They are the only two jobs that have never produced an artifact.
+
 ## 2026-09-03 — 2.1.1
 
 ### Changed

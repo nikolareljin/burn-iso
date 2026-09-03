@@ -32,7 +32,13 @@ jobs:
     with:
       working_directory: "."
       prebuild_command: "git submodule update --init --recursive && ./tools/gen-man.sh"
-      artifact_glob: "../*.deb"
+      # dpkg-buildpackage writes the .deb to the parent of the source
+      # directory, which is outside the workspace, and upload-artifact refuses
+      # a path containing "..": `Invalid pattern '../*.deb'`. So build, then
+      # move the artifacts somewhere inside it. The command replaces the
+      # helper's default, which is plain `dpkg-buildpackage -us -uc`.
+      build_command: "dpkg-buildpackage -us -uc && mkdir -p dist && mv ../*.deb dist/"
+      artifact_glob: "dist/*.deb"
 
   ppa:
     if: ${{ vars.PPA_PUBLISH_ENABLED == 'true' }}
@@ -52,7 +58,12 @@ jobs:
   rpm:
     uses: nikolareljin/ci-helpers/.github/workflows/rpm-build.yml@production
     with:
-      working_directory: "."
+      # An absolute path, because the helper passes working_directory straight
+      # into rpmbuild's _topdir. Relative, %prep resolves _builddir to an
+      # absolute /packaging/rpm/build/BUILD that does not exist and the build
+      # dies with "Bad exit status ... (%prep)". Same directory, spelled so
+      # rpmbuild can use it.
+      working_directory: ${{ github.workspace }}
       prebuild_command: "git submodule update --init --recursive && ./tools/gen-man.sh"
       spec_path: "packaging/isoforge.spec"
       artifact_glob: "dist/*.rpm"
