@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning when applicable.
 
+## 2026-09-03 — 2.1.1
+
+### Changed
+- Vendored `script-helpers` moves from 0.9.2 to 0.24.0. The pin was far enough behind that a generated activity log inside the checkout showed as a repository change, because it predated `script-helpers` learning to ignore those itself. The Bash API is additive across the range — 111 functions to 294, none removed — and every packaging wrapper was exercised against the new tree before the pin moved.
+
+### Notes
+- The two defects `tools/gen-brew-formula.sh` repairs are still present at 0.24.0: the dependency block still reaches the formula with literal `\n` separators, and the `bin` shim is still named after `--entrypoint`. The packaging helpers are also still mode 644, so `tools/*.sh` still has to invoke them through `bash` rather than gate on the executable bit. The workarounds stay.
+
 ## 2026-09-01 — 2.1.0
 
 ### Added
