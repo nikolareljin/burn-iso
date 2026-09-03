@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 # SCRIPT: isoforge.sh
 # DESCRIPTION: Isoforge downloads Linux images, writes them to USB (single image or Ventoy multi-ISO), and builds custom installable ISOs from a recipe.
-# USAGE: isoforge [build ...] [--config PATH] [--version] [--help]
+# USAGE: isoforge [OPTIONS] [COMMAND [COMMAND_OPTIONS]]
 # EXAMPLE: isoforge --config ./config.json
 # EXAMPLE: sudo isoforge build --recipe recipes/nikos.yml
 # PARAMETERS:
-#   build [ARGS]   Build a custom ISO from a recipe. Pass --help for its options.
-#   --config PATH  Override config file path.
-#   --version      Print version and exit.
-#   -h, --help     Show help and exit.
+#   download        Download one or more ISOs from config.json. Options: --config PATH, -h, --help.
+#   burn            Write an ISO from download_dir, or a browsed local ISO, to a drive. Options: --config PATH, -h, --help.
+#   build           Build a custom installable ISO from a recipe. Options: -r/--recipe PATH, -o/--output DIR, --config PATH, --work-dir DIR, --dry-run, --smoke-test, --keep, --version, -h/--help.
+#   setup           Install project dependencies. Parameters: PACKAGE. Options: -h, --help.
+#   help [COMMAND]  Show top-level help or command help for download, burn, build, or setup.
+#   --config PATH   Override config file path for the TUI flow.
+#   --version       Print version and exit.
+#   -h, --help      Show help and exit.
 set -euo pipefail
 
 # CLI Isoforge-like interface using dialog
@@ -32,6 +36,14 @@ fi
 REPO_ROOT="$ISOFORGE_ROOT"
 SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts/script-helpers}"
 
+if [[ -f "$REPO_ROOT/inc/cli-help.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$REPO_ROOT/inc/cli-help.sh"
+else
+  >&2 printf "Missing required CLI help file: %s\n" "$REPO_ROOT/inc/cli-help.sh"
+  exit 1
+fi
+
 if [[ ! -f "$SCRIPT_HELPERS_DIR/helpers.sh" ]]; then
   >&2 printf "Missing required helper library: %s\n" "$SCRIPT_HELPERS_DIR/helpers.sh"
   >&2 printf "Please install project submodules (e.g. run 'git submodule update --init --recursive') and retry.\n"
@@ -49,16 +61,10 @@ fi
 # shellcheck source=/dev/null
 source "$REPO_ROOT/inc/download-state.sh"
 
-# Always restore a clean terminal UI when exiting (including Cancel/interrupt)
-reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
-if [[ "${ISOFORGE_DISABLE_EXIT_TRAP:-0}" != "1" ]]; then
-  trap reset_tui EXIT INT TERM
-fi
-
 CONFIG_FILE="${CONFIG_FILE:-$REPO_ROOT/config.json}"
 
 usage() {
-  display_help "$0"
+  isoforge_show_help
 }
 
 VERSION_FILE="$REPO_ROOT/VERSION"
@@ -69,18 +75,48 @@ fi
 VERSION="${VERSION:-0.1.0}"
 
 parse_cli_args() {
-  # `isoforge build ...` hands the rest of the command line to the builder, so
-  # the installed CLI is one entry point rather than two.
-  if [[ "${1:-}" == "build" ]]; then
-    shift
-    exec "$REPO_ROOT/inc/forge.sh" "$@"
-  fi
-
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      build|forge)
+        shift
+        if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+          isoforge_show_help build
+          exit 0
+        fi
+        exec "$REPO_ROOT/inc/forge.sh" "$@"
+        ;;
+      download)
+        shift
+        if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+          isoforge_show_help download
+          exit 0
+        fi
+        exec "$REPO_ROOT/inc/download.sh" "$@"
+        ;;
+      burn)
+        shift
+        if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+          isoforge_show_help burn
+          exit 0
+        fi
+        exec "$REPO_ROOT/inc/burn.sh" "$@"
+        ;;
+      setup)
+        shift
+        if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+          isoforge_show_help setup
+          exit 0
+        fi
+        exec "$REPO_ROOT/inc/setup.sh" "$@"
+        ;;
+      help)
+        shift
+        isoforge_show_help "${1:-}"
+        exit $?
+        ;;
       --config)
         if [[ $# -lt 2 || -z "${2:-}" ]]; then
-          print_error "Missing value for --config"
+          printf "Missing value for --config\n" >&2
           usage
           exit 2
         fi
@@ -89,10 +125,13 @@ parse_cli_args() {
         ;;
       --version) echo "$VERSION"; exit 0;;
       -h|--help) usage; exit 0;;
-      *) print_error "Unknown argument: $1"; usage; exit 2;;
+      *) printf "Unknown argument: %s\n" "$1" >&2; usage; exit 2;;
     esac
   done
 }
+
+# Always restore a clean terminal UI when exiting (including Cancel/interrupt).
+reset_tui() { tput cnorm 2>/dev/null || true; tput rmcup 2>/dev/null || true; clear; }
 
 SELECTED_IMAGE=""
 SELECTED_DEVICE=""
@@ -926,5 +965,8 @@ main_menu() {
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   parse_cli_args "$@"
+  if [[ "${ISOFORGE_DISABLE_EXIT_TRAP:-0}" != "1" ]]; then
+    trap reset_tui EXIT INT TERM
+  fi
   main_menu
 fi

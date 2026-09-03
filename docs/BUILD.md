@@ -48,6 +48,13 @@ Ubuntu and Xubuntu 24.04 and 26.04, amd64. Both casper layouts are handled:
   the build writes into a fresh upperdir. The result is squashed as a new top
   layer and registered in `install-sources.yaml`.
 
+  Which layer it stacks onto matters. The topmost squashfs is not the one the
+  installer uses: Ubuntu ships `minimal.standard.live` above `minimal.standard`,
+  and the live layer exists only for the session you boot into. Building on top
+  of it would put the customization somewhere the installer never reads, so the
+  build follows `install-sources.yaml` and ignores any layer above the one it
+  names.
+
 For a layered image, the new layer has to be registered in
 `install-sources.yaml` or the installer keeps using the original layer and
 drops everything the build added. If that file is missing, or its layered
@@ -164,10 +171,13 @@ first boot instead.
 ```yaml
 ansible:
   repo: https://github.com/nikolareljin/nikos
-  ref: "0.6.1"
+  ref: "0.6.3"          # an immutable tag, never a branch
   playbook: site.yml
   skel_home: /etc/skel
-  skip_tags: [github-setup]
+  # Only tags a role actually declares. github-setup has none, so naming it
+  # here would do nothing, and the tag guard rejects it rather than let the
+  # build quietly include what you meant to leave out.
+  skip_tags: [ai-local, network, music, education]
   extra_vars:
     nikos_desktop_flavor: xubuntu-minimal
 ```
@@ -180,10 +190,66 @@ theming role writes into that user's `~/.config`. In a chroot there is no such
 user and the environment resolves to root, so `skel_home` points the per-user
 half at `/etc/skel`. Every account the installer creates then inherits it.
 
+`HOME` is set to the same path for the playbook run. Roles install per-user
+tooling by shelling out to installers that honour `$HOME` while their `creates:`
+guards look under the playbook's own home variable, so the two disagreeing
+means an installer writes to one place and the next task reads the other.
+NikOS's nvm step failed exactly that way during development, installing into
+`/root/.nvm` and then failing to source `/etc/skel/.nvm/nvm.sh`.
+
 Tasks that genuinely need a live session cannot run at build time. NikOS
 already guards its `xfconf-query` calls with `failed_when: false`, so they
 no-op; anything else belongs in `skip_tags`, and NikOS's own autostart pass is
 the right mechanism for work that must happen at first login.
+
+### extra_vars keeps its types
+
+`ansible.extra_vars` is passed to the playbook as a single JSON object, so a
+recipe can hand it lists and mappings rather than only strings. This matters
+more than it sounds: `-e key=value` makes a string no matter what it looks
+like, so a list passed that way arrives as `"[]"` and any role that
+concatenates it with another list fails on the type.
+
+`nikos_home` and `nikos_user` are merged in first, so a recipe can override
+them if it needs to.
+
+### Tags only work on roles that declare them
+
+`--tags` and `--skip-tags` match tags, not role names. A role listed in a
+playbook without a `tags:` key cannot be selected or skipped at all. In NikOS
+0.6.1 that means `base`, `desktop`, `theming`, `github-setup`, `editors`,
+`cloud-ai-cli`, `agent-dev` and `dev-tools` always run, and only `ai-local`,
+`network`, `music`, `education` and the `never`-tagged opt-ins can be turned
+off.
+
+This matters because the two failure modes are not symmetric. A `tags` entry
+that matches nothing runs less than you asked for and is obvious. A `skip_tags`
+entry that matches nothing runs *more* than you asked for, silently, and for an
+image build that is the expensive direction. `recipes/nikos.yml` shipped with
+`skip_tags: [github-setup]` in 2.0.0, which did nothing at all.
+
+So iso-forge asks the playbook what tags it has, with
+`ansible-playbook --list-tags`, and fails the build if a recipe names one that
+does not exist. If the listing cannot be read it warns and continues, because
+an unreadable tag list is not a reason to refuse to build.
+
+## Verifying a NikOS image
+
+`.github/workflows/nikos-iso.yml` runs `recipes/nikos.yml` end to end on a real
+Xubuntu base, then checks the artifact rather than the build log:
+
+```bash
+scripts/verify-nikos-iso.sh ~/Downloads/iso_images/nikos-24.04-amd64.iso
+```
+
+It asserts the image is ISO 9660, carries an El Torito boot record, has the
+recipe's volume id, and is the size a desktop image should be; then unpacks the
+root filesystem and looks for `/usr/local/bin/nikos`, the NikOS Plymouth theme,
+the Xfce session, LightDM, desktop configuration in `/etc/skel`, an emptied
+`/etc/machine-id`, and the absence of the build's own `policy-rc.d`.
+
+That workflow runs on demand, and automatically when the builder, the recipes
+or the workflow itself change. It takes 30 to 60 minutes.
 
 ## Checking the result
 
@@ -200,6 +266,18 @@ Boot flags are the usual reason a remastered image fails to start. Rather than
 guessing at `-as mkisofs` arguments, the build asks xorriso to report the ones
 that reproduce the base image's boot setup and reuses them. The base image has
 to stay readable at its path for the whole build, because that report names it.
+
+## Reproducibility
+
+Commands run inside the image start from an empty environment: `PATH`, `HOME`,
+`USER`, `LOGNAME`, `SHELL`, `TERM`, `LANG`, `LC_ALL` and `DEBIAN_FRONTEND`, and
+nothing else. Whatever the caller has exported does not reach the build, so the
+same recipe on the same base produces the same image whether it runs on a
+workstation or a CI runner.
+
+That is not theoretical: an early run of the NikOS build failed because
+`NVM_DIR` from a CI runner reached the chroot and pointed an installer at a
+host path.
 
 ## When a build fails
 

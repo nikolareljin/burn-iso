@@ -61,16 +61,35 @@ make_base() {
       printf 'standard layer\n' >"$root/lower2/marker"
       mksquashfs "$root/rootfs" "$root/tree/casper/minimal.squashfs" -noappend -quiet >/dev/null
       mksquashfs "$root/lower2" "$root/tree/casper/minimal.standard.squashfs" -noappend -quiet >/dev/null
+      # Three layers like a real Ubuntu image, where the installer uses
+      # minimal.standard and minimal.standard.live exists only for the live
+      # session and sits above it.
+      mkdir -p "$root/lower3"
+      printf 'live layer\n' >"$root/lower3/live-marker"
+      mksquashfs "$root/lower3" "$root/tree/casper/minimal.standard.live.squashfs" -noappend -quiet >/dev/null
       cat >"$root/tree/casper/install-sources.yaml" <<'YAML'
+- default: false
+  description:
+    en: A minimal installation.
+  id: synthetic-minimal
+  locale_support: langpack
+  name:
+    en: Synthetic Minimal
+  path: minimal.squashfs
+  size: 1024
+  type: fsimage-layered
+  variant: desktop
 - default: true
   description:
-    en: Synthetic
-  id: synthetic
-  locale_support: none
+    en: A full featured installation.
+  id: synthetic-desktop
+  locale_support: langpack
   name:
-    en: Synthetic
-  path: minimal.standard
+    en: Synthetic Desktop
+  path: minimal.standard.squashfs
+  size: 2048
   type: fsimage-layered
+  variant: desktop
 YAML
       ;;
   esac
@@ -146,8 +165,13 @@ mkdir -p "$work2"
 forge_extract_iso "$base2" "$work2/iso" >/dev/null 2>&1
 forge_detect_layout "$work2/iso" >/dev/null 2>&1
 check "stacked squashfs is detected as 'layered'" "$FORGE_LAYOUT" "layered"
-check "every layer is collected" "${#FORGE_LAYER_PATHS[@]}" "2"
-check "the top layer is the longest-named one" "$(basename "$FORGE_TOP_LAYER")" "minimal.standard.squashfs"
+# The image has three layers, but the installer uses minimal.standard, so the
+# live layer above it is dropped. Building on top of the live layer would put
+# the customization where the installer never looks.
+check "layers above the install source are dropped" "${#FORGE_LAYER_PATHS[@]}" "2"
+check "the build sits on the installer's layer" "$(basename "$FORGE_TOP_LAYER")" "minimal.standard.squashfs"
+check "the install source stem is read from install-sources.yaml" \
+  "$(forge_yaml_install_source_stem "$work2/iso/casper/install-sources.yaml")" "minimal.standard"
 
 # The new layer must be registered or the installer carries it and ignores it.
 FORGE_TOP_LAYER="$work2/iso/casper/minimal.standard.squashfs"
@@ -156,9 +180,14 @@ if forge_register_layer "$work2/iso" "minimal.standard.isoforge" >/dev/null 2>&1
 else
   bad "install-sources.yaml is repointed at the new layer"
 fi
-check "the source now names the new layer" \
-  "$(python3 -c 'import sys,yaml; print(yaml.safe_load(open(sys.argv[1]))[0]["path"])' "$work2/iso/casper/install-sources.yaml" 2>/dev/null)" \
-  "minimal.standard.isoforge"
+# The default entry is the one that moves, and it keeps the .squashfs form the
+# file already used. The other entry must not be touched.
+check "the default source now names the new layer" \
+  "$(python3 -c 'import sys,yaml; d=yaml.safe_load(open(sys.argv[1])); print([e["path"] for e in d if e.get("default")][0])' "$work2/iso/casper/install-sources.yaml" 2>/dev/null)" \
+  "minimal.standard.isoforge.squashfs"
+check "the other source is left alone" \
+  "$(python3 -c 'import sys,yaml; d=yaml.safe_load(open(sys.argv[1])); print([e["path"] for e in d if not e.get("default")][0])' "$work2/iso/casper/install-sources.yaml" 2>/dev/null)" \
+  "minimal.squashfs"
 
 # A layered image whose install-sources.yaml cannot be repointed must fail the
 # build: the installer would keep the original layer and drop everything added.
@@ -171,7 +200,7 @@ fi
 
 cat >"$work2/iso/casper/install-sources.yaml" <<'YAML'
 - id: unrelated
-  path: something-else
+  path: something-else.squashfs
 YAML
 if forge_register_layer "$work2/iso" "minimal.standard.isoforge" >/dev/null 2>&1; then
   bad "an install-sources.yaml that cannot be repointed fails the build"
@@ -180,7 +209,7 @@ else
 fi
 check "the original install-sources.yaml is restored on failure" \
   "$(python3 -c 'import sys,yaml; print(yaml.safe_load(open(sys.argv[1]))[0]["path"])' "$work2/iso/casper/install-sources.yaml" 2>/dev/null)" \
-  "something-else"
+  "something-else.squashfs"
 
 # --- the volume id rewrite is literal ---------------------------------------
 # A real base volume id looks like "Ubuntu 24.04.3 LTS amd64": as a regex those
@@ -238,6 +267,78 @@ check "the architecture is read from .disk/info" "$(forge_detect_arch "$TMP/arch
 rm -f "$TMP/arch/.disk/info"
 check "the architecture falls back to the filename" "$(forge_detect_arch "$TMP/arch" /tmp/thing-arm64.iso)" "arm64"
 check "an unknown architecture reads as empty" "$(forge_detect_arch "$TMP/arch" /tmp/mystery.iso)" ""
+
+# xorriso's report contains `-e '--interval:...'` for the EFI boot image, and a
+# bare -e in xargs input comes out as an empty field, which left the interval as
+# a positional argument and made xorriso refuse the whole command.
+mapfile -t split_args < <(printf -- "-eltorito-alt-boot\n-e '--interval:x:all::'\n-no-emul-boot\n" | python3 -c 'import shlex,sys
+for word in shlex.split(sys.stdin.read()):
+    print(word)')
+check "a bare -e survives argument splitting" "${split_args[1]}" "-e"
+check "its quoted value stays one word"       "${split_args[2]}" "--interval:x:all::"
+check "nothing is lost"                       "${#split_args[@]}" "4"
+if grep -q 'xargs -n1' "$REPO_ROOT/inc/forge/image.sh"; then
+  bad "the pack step no longer splits arguments with xargs"
+else
+  ok "the pack step no longer splits arguments with xargs"
+fi
+
+# `mapfile < <(cmd)` cannot see cmd fail, so a split that errored would leave
+# the argument list empty and xorriso would pack with no boot arguments: an
+# image that mounts perfectly and boots nothing.
+if grep -q 'mapfile -t args < <(' "$REPO_ROOT/inc/forge/image.sh"; then
+  bad "boot-argument splitting detects its own failure"
+else
+  ok "boot-argument splitting detects its own failure"
+fi
+if grep -q 'parsed to nothing' "$REPO_ROOT/inc/forge/image.sh"; then
+  ok "an empty split aborts the pack"
+else
+  bad "an empty split aborts the pack"
+fi
+
+# --- the chroot must not inherit the build host's environment ---------------
+# A real build failed because NVM_DIR from a CI runner reached the chroot and
+# pointed an installer at a host path. Anything not on the allow-list below
+# would make an image depend on who built it.
+# shellcheck source=/dev/null
+source "$REPO_ROOT/inc/forge/chroot.sh"
+allowed=$(sed -n '/env -i/,/bin\/bash -c/p' "$REPO_ROOT/inc/forge/chroot.sh" | grep -oE '^ *[A-Z_]+=' | tr -d ' =')
+for leak in NVM_DIR GITHUB_ACTIONS SUDO_USER http_proxy PYTHONPATH; do
+  if grep -qx -- "$leak" <<<"$allowed"; then
+    bad "$leak is not passed into the chroot"
+  else
+    ok "$leak is not passed into the chroot"
+  fi
+done
+for needed in PATH HOME LANG DEBIAN_FRONTEND; do
+  if grep -qx -- "$needed" <<<"$allowed"; then
+    ok "$needed is passed into the chroot"
+  else
+    bad "$needed is passed into the chroot"
+  fi
+done
+if grep -q 'env -i' "$REPO_ROOT/inc/forge/chroot.sh"; then
+  ok "the chroot starts from an empty environment"
+else
+  bad "the chroot starts from an empty environment"
+fi
+
+# The root filesystem is squashed between cleanup and teardown, so anything the
+# build undoes only on the way out ships inside the image. A policy-rc.d
+# returning 101 would refuse to start services on the installed machine.
+cleanup_line=$(grep -n 'forge_chroot_cleanup' "$REPO_ROOT/inc/forge.sh" | grep -v '^.*#' | head -1 | cut -d: -f1)
+repack_line=$(grep -n 'forge_repack ' "$REPO_ROOT/inc/forge.sh" | head -1 | cut -d: -f1)
+if [[ -n "$cleanup_line" && -n "$repack_line" ]] && (( cleanup_line < repack_line )); then
+  ok "the chroot is cleaned before the filesystem is squashed"
+else
+  bad "the chroot is cleaned before the filesystem is squashed"
+fi
+if grep -q 'forge_chroot_unscaffold' "$REPO_ROOT/inc/forge/chroot.sh"; then
+  ok "cleanup removes the build's own scaffolding"
+else
+  bad "cleanup removes the build's own scaffolding"
+fi
 
 # --- a base that is not a live image ---------------------------------------
 mkdir -p "$TMP/notlive/tree/random"

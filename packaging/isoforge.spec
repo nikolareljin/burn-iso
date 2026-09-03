@@ -1,5 +1,5 @@
 Name:           isoforge
-Version:        2.0.2
+Version:        2.1.0
 Release:        1%{?dist}
 Summary:        TUI tool for downloading and flashing ISO images to USB
 License:        MIT
@@ -45,6 +45,11 @@ install -m 0644 docs/man/isoforge.1 %{buildroot}/usr/share/man/man1/isoforge.1
 /usr/share/man/man1/isoforge.1
 
 %changelog
+* Tue Sep 01 2026 Nikola Reljin <nikola.reljin@gmail.com> - 2.1.0-1
+- Add an end-to-end NikOS ISO build workflow and an artifact verifier
+- Fail the build when a recipe names an Ansible tag the playbook does not define
+- Correct the NikOS recipe's skip_tags, which named an untagged role
+
 * Tue Sep 01 2026 Nikola Reljin <nikola.reljin@gmail.com> - 2.0.2-1
 - Declare Source0, which %%autosetup requires
 - Build the Debian package as a native source package

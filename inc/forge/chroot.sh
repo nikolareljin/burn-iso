@@ -52,18 +52,9 @@ forge_chroot_leave() {
   local rootfs="${FORGE_CHROOT_DIR:-}"
   [[ -n "$rootfs" ]] || return 0
 
-  if [[ -n "$FORGE_POLICY_RC" && -f "$FORGE_POLICY_RC" ]]; then
-    rm -f "$FORGE_POLICY_RC"
-    FORGE_POLICY_RC=""
-  fi
-
-  if [[ -n "$FORGE_RESOLV_BACKUP" ]] && [[ -e "$FORGE_RESOLV_BACKUP" || -L "$FORGE_RESOLV_BACKUP" ]]; then
-    # Remove first for the same reason: the file being restored may be a
-    # symlink, and mv onto an existing symlink would follow it.
-    rm -f "$rootfs/etc/resolv.conf"
-    mv -f "$FORGE_RESOLV_BACKUP" "$rootfs/etc/resolv.conf"
-    FORGE_RESOLV_BACKUP=""
-  fi
+  # Normally already done by forge_chroot_cleanup, before the repack. Repeated
+  # here for the path where a build failed before reaching it.
+  forge_chroot_unscaffold
 
   local i
   for ((i = ${#FORGE_CHROOT_MOUNTS[@]} - 1; i >= 0; i--)); do
@@ -87,12 +78,24 @@ forge_q() {
   printf '%s' "${out# }"
 }
 
+# `env -i` rather than `env`: without it the build host's environment reaches
+# the chroot, and the image then depends on who built it. A real build failed
+# exactly this way, with NVM_DIR=/home/runner/.nvm inherited from a CI runner
+# pointing an installer at a directory that does not exist inside the image.
+# The same leak would carry SUDO_*, GITHUB_*, proxy settings and a host HOME.
+#
+# Everything the chroot is allowed to see is listed here.
 forge_in_chroot() {
-  chroot "$FORGE_CHROOT_DIR" /usr/bin/env \
+  chroot "$FORGE_CHROOT_DIR" /usr/bin/env -i \
     DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
     PATH=/usr/sbin:/usr/bin:/sbin:/bin \
+    HOME=/root \
+    USER=root \
+    LOGNAME=root \
+    SHELL=/bin/bash \
+    TERM="${TERM:-dumb}" \
     /bin/bash -c "$1"
 }
 
@@ -119,4 +122,31 @@ forge_chroot_cleanup() {
   # systemd and DHCP treat them all as the same host.
   forge_in_chroot_soft ": >/etc/machine-id"
   forge_in_chroot_soft "rm -f /var/lib/dbus/machine-id"
+
+  # The build's own scaffolding has to come out here, not in forge_chroot_leave.
+  # The root filesystem is squashed between the two, so anything still in place
+  # now ships inside the image: a policy-rc.d returning 101 would refuse to
+  # start services on the installed machine, and the build host's resolv.conf
+  # would be handed to every user of the image.
+  forge_chroot_unscaffold
+}
+
+# Undo what forge_chroot_enter put in place. Idempotent, because it runs before
+# the repack and again on the way out in case a build failed before reaching it.
+forge_chroot_unscaffold() {
+  local rootfs="${FORGE_CHROOT_DIR:-}"
+  [[ -n "$rootfs" ]] || return 0
+
+  if [[ -n "$FORGE_POLICY_RC" && -f "$FORGE_POLICY_RC" ]]; then
+    rm -f "$FORGE_POLICY_RC"
+    FORGE_POLICY_RC=""
+  fi
+
+  if [[ -n "$FORGE_RESOLV_BACKUP" ]] && [[ -e "$FORGE_RESOLV_BACKUP" || -L "$FORGE_RESOLV_BACKUP" ]]; then
+    # Remove first: the file being restored may be a symlink, and mv onto an
+    # existing symlink would follow it.
+    rm -f "$rootfs/etc/resolv.conf"
+    mv -f "$FORGE_RESOLV_BACKUP" "$rootfs/etc/resolv.conf"
+    FORGE_RESOLV_BACKUP=""
+  fi
 }

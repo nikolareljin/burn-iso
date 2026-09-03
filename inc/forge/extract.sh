@@ -79,6 +79,29 @@ forge_detect_layout() {
   FORGE_LAYOUT="layered"
   FORGE_TOP_LAYER="${FORGE_LAYER_PATHS[-1]}"
   log_info "Layout: layered squashfs, ${#FORGE_LAYER_PATHS[@]} layer(s): $(printf '%s ' "${found[@]}")"
+
+  # The topmost squashfs is not necessarily the one the installer lays down.
+  # Ubuntu ships minimal.standard.live above minimal.standard, and only the
+  # latter is installed; the live layer exists for the session you boot into.
+  # Building on top of the live layer would put the customization somewhere the
+  # installer never reads, so follow install-sources.yaml instead and drop any
+  # layer stacked above the one it names.
+  local sources="$iso_dir/casper/install-sources.yaml"
+  local stem
+  if stem=$(forge_yaml_install_source_stem "$sources" 2>/dev/null) && [[ -n "$stem" ]]; then
+    if [[ -f "$casper/${stem}.squashfs" ]]; then
+      local kept=() p
+      for p in "${FORGE_LAYER_PATHS[@]}"; do
+        kept+=("$p")
+        [[ "$(basename "$p" .squashfs)" == "$stem" ]] && break
+      done
+      FORGE_LAYER_PATHS=("${kept[@]}")
+      FORGE_TOP_LAYER="$casper/${stem}.squashfs"
+      log_info "The installer uses '${stem}'; building on that, over ${#FORGE_LAYER_PATHS[@]} layer(s)"
+    else
+      log_warn "install-sources.yaml names '${stem}', which has no squashfs; using the topmost layer."
+    fi
+  fi
   return 0
 }
 

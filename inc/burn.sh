@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# SCRIPT: burn.sh
+# DESCRIPTION: Write a selected ISO to a selected drive.
+# USAGE: burn [--config PATH] [-h|--help]
+# PARAMETERS:
+#   --config PATH  Override config file path.
+#   -h, --help     Show help and exit.
 set -euo pipefail
 
 # Burn a selected ISO to a selected drive, using config.json
@@ -13,6 +19,23 @@ else
   REPO_ROOT="$SCRIPT_DIR"
 fi
 SCRIPT_HELPERS_DIR="${SCRIPT_HELPERS_DIR:-$REPO_ROOT/scripts/script-helpers}"
+if [[ -f "$REPO_ROOT/inc/cli-help.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$REPO_ROOT/inc/cli-help.sh"
+else
+  >&2 printf "Missing required CLI help file: %s\n" "$REPO_ROOT/inc/cli-help.sh"
+  exit 1
+fi
+
+set +e
+isoforge_parse_config_only_args "$@"
+parse_status=$?
+set -e
+case "$parse_status" in
+  0) ;;
+  1) isoforge_show_help burn; exit 0 ;;
+  *) isoforge_show_help burn; exit 2 ;;
+esac
 
 if [[ ! -f "$SCRIPT_HELPERS_DIR/helpers.sh" ]]; then
   >&2 printf "Missing required helper library: %s\n" "$SCRIPT_HELPERS_DIR/helpers.sh"
