@@ -1,5 +1,5 @@
 Name:           isoforge
-Version:        2.1.1
+Version:        2.1.2
 Release:        1%{?dist}
 Summary:        TUI tool for downloading and flashing ISO images to USB
 License:        MIT
@@ -45,6 +45,9 @@ install -m 0644 docs/man/isoforge.1 %{buildroot}/usr/share/man/man1/isoforge.1
 /usr/share/man/man1/isoforge.1
 
 %changelog
+* Thu Sep 03 2026 Nikola Reljin <nikola.reljin@gmail.com> - 2.1.2-1
+- Fix the deb artifact path and the rpm _topdir so both jobs can produce packages
+
 * Thu Sep 03 2026 Nikola Reljin <nikola.reljin@gmail.com> - 2.1.1-1
 - Move vendored script-helpers from 0.9.2 to 0.24.0
 
