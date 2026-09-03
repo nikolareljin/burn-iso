@@ -75,7 +75,8 @@ Build A Custom ISO
   playbook applied inside the image, so the ISO installs an already-provisioned
   desktop. `.github/workflows/nikos-iso.yml` runs that build end to end and
   `scripts/verify-nikos-iso.sh` checks the finished image.
-- Full guide: `docs/BUILD.md`.
+- Full guide: `docs/BUILD.md`. Choosing what an image contains, and the
+  limitation to know about until that lands: `docs/IMAGE-COMPOSITION.md`.
 
 Isoforge for the CLI
 
