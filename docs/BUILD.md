@@ -233,17 +233,17 @@ So iso-forge asks the playbook what tags it has, with
 does not exist. If the listing cannot be read it warns and continues, because
 an unreadable tag list is not a reason to refuse to build.
 
-### Set skip_tags, not tags
+### Set ansible.skip_tags, not ansible.tags
 
-`tags` and `skip_tags` are currently passed to one `ansible-playbook`
-invocation, and `--tags` restricts a run to tasks carrying those tags. A role
-declared `tags: [never, <name>]` — the normal way to write an opt-in role —
-therefore installs while every untagged role is skipped, and the image comes
-out looking like the stock base with one extra package.
+`ansible.tags` and `ansible.skip_tags` are currently passed to one
+`ansible-playbook` invocation, and `--tags` restricts a run to tasks carrying
+those tags. A role declared `tags: [never, <name>]` — the normal way to write
+an opt-in role — therefore installs while every untagged role is skipped, and
+the image comes out looking like the stock base with one extra package.
 
-**Use `skip_tags` only until this is fixed.** No recipe here sets `tags`, which
-is why it has not produced a bad image. `docs/IMAGE-COMPOSITION.md` describes
-the two-pass run that replaces it.
+**Set `ansible.skip_tags` only until this is fixed.** No recipe here sets
+`ansible.tags`, which is why it has not produced a bad image.
+`docs/IMAGE-COMPOSITION.md` describes the two-pass run that replaces it.
 
 ## Choosing what the image contains
 
