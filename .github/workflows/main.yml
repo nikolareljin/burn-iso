@@ -58,12 +58,14 @@ jobs:
   rpm:
     uses: nikolareljin/ci-helpers/.github/workflows/rpm-build.yml@production
     with:
-      # An absolute path, because the helper passes working_directory straight
-      # into rpmbuild's _topdir. Relative, %prep resolves _builddir to an
-      # absolute /packaging/rpm/build/BUILD that does not exist and the build
-      # dies with "Bad exit status ... (%prep)". Same directory, spelled so
-      # rpmbuild can use it.
-      working_directory: ${{ github.workspace }}
+      # Plain ".". The absolute path this used to carry was an attempt to work
+      # around rpm-build.yml passing working_directory straight into rpmbuild's
+      # _topdir, which has to be absolute. It could not work: a workflow_call
+      # `with:` block is evaluated before any runner exists, so github.workspace
+      # is the empty string here and the spec was looked for at
+      # /packaging/isoforge.spec. ci-helpers 0.22.1 takes _topdir from pwd
+      # instead, so the input is just a directory again.
+      working_directory: "."
       prebuild_command: "git submodule update --init --recursive && ./tools/gen-man.sh"
       spec_path: "packaging/isoforge.spec"
       artifact_glob: "dist/*.rpm"
