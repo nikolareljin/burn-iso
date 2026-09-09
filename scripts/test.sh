@@ -46,6 +46,7 @@ cd "$ROOT_DIR"
 
 ./scripts/build.sh
 ./scripts/test-cancel-flow.sh
+./scripts/test-dependency-install.sh
 ./scripts/test-flash-drive-redirect.sh
 ./scripts/test-download-error-state.sh
 ./scripts/test-forge-recipe.sh

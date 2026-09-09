@@ -213,42 +213,80 @@ load_config() {
   DEVICE_FILTER=$(jq -r '.block_device_filter // "usb"' "$CONFIG_FILE")
 }
 
-# Show a minimal TUI gauge while installing dependencies; suppress detailed output to a log.
+# Return success when the selected package manager will require sudo.
+package_manager_requires_sudo() {
+  [[ "${EUID:-$(id -u)}" -ne 0 ]] || return 1
+  command -v apt-get >/dev/null 2>&1 || \
+    command -v dnf >/dev/null 2>&1 || \
+    command -v pacman >/dev/null 2>&1
+}
+
+# Ask for permission and authenticate before a dialog owns the terminal. The
+# dependency helper invokes sudo itself; pre-validating here keeps its password
+# prompt from being hidden behind an installation UI.
+prepare_dependency_installation() {
+  local packages="$*"
+  local prompt="Isoforge needs to install:\n\n${packages}\n\nContinue?"
+
+  if command -v dialog >/dev/null 2>&1; then
+    dialog_init
+    dialog --title "Install Dependencies" --defaultno --yesno "$prompt" 12 "$DIALOG_WIDTH" || return 1
+  else
+    [[ -t 0 ]] || {
+      print_error "Dependencies are missing. Run ./setup in an interactive terminal."
+      return 1
+    }
+    local reply
+    read -r -p "Isoforge needs to install: ${packages}. Continue? [y/N] " reply || return 1
+    [[ "$reply" =~ ^[Yy]([Ee][Ss])?$ ]] || return 1
+  fi
+
+  if package_manager_requires_sudo; then
+    if ! command -v sudo >/dev/null 2>&1; then
+      print_error "A supported package manager requires sudo, but sudo is not available. Run ./setup as an administrator."
+      return 1
+    fi
+    sudo -v || {
+      print_error "Administrator authentication failed. Dependencies were not installed."
+      return 1
+    }
+  fi
+}
+
+# Show the package manager's real output in a dialog and retain it in a log.
+# This deliberately avoids a made-up percentage: package managers do not
+# expose a portable progress value, and a hidden sudo prompt used to make the
+# old gauge loop forever.
 deps_install_with_dialog() {
   local log="$REPO_ROOT/.deps_install.log"
   : >"$log"
-  local status_file="$REPO_ROOT/.deps_status.tmp"
-  local pkgs=("$@")
   dialog_init
-  (
-    set +e
-    install_dependencies "${pkgs[@]}" >>"$log" 2>&1 &
-    local pid=$!
-    local pct=1
-    while kill -0 "$pid" 2>/dev/null; do
-      pct=$((pct + 3)); (( pct >= 99 )) && pct=1
-      echo "XXX"; echo "$pct"; echo "Installing: ${pkgs[*]}"; echo "XXX"
-      sleep 0.3
-    done
-    wait "$pid"; local rc=$?
-    echo "$rc" >"$status_file"
-    echo "XXX"; echo 100; echo "Finalizing..."; echo "XXX"
-  ) | dialog --title "Installing Dependencies" --gauge "Preparing..." 10 "$DIALOG_WIDTH" 0
-  local rc; rc=$(cat "$status_file" 2>/dev/null || echo 1)
-  rm -f "$status_file"
-  return "$rc"
+  local errexit_was_on=0
+  [[ $- == *e* ]] && errexit_was_on=1
+  set +e
+  install_dependencies "$@" 2>&1 | tee -a "$log" | \
+    dialog --title "Installing Dependencies" --programbox 20 "$DIALOG_WIDTH"
+  local -a statuses=("${PIPESTATUS[@]}")
+  (( errexit_was_on )) && set -e
+  return "${statuses[0]}"
 }
 
-# Install required tools if missing using script-helpers (quiet; with TUI progress)
+# Install required tools if missing using script-helpers.
 ensure_deps() {
   local log="$REPO_ROOT/.deps_install.log"
   : >"$log"
 
-  # 1) Ensure 'dialog' exists first so we can use TUI for the rest.
+  # Ensure dialog exists first so the remaining install can display live output.
   if ! command -v dialog >/dev/null 2>&1; then
-    echo "Installing prerequisite: dialog" >>"$log"
-    # Best effort; do not spam terminal
-    install_dependencies dialog >>"$log" 2>&1 || true
+    prepare_dependency_installation dialog || return 1
+    if ! install_dependencies dialog 2>&1 | tee -a "$log"; then
+      print_error "Failed to install dialog. Details were saved to: $log"
+      return 1
+    fi
+    if ! command -v dialog >/dev/null 2>&1; then
+      print_error "dialog is still unavailable after installation. Details were saved to: $log"
+      return 1
+    fi
   fi
 
   # 2) Compute remaining missing dependencies
@@ -265,19 +303,13 @@ ensure_deps() {
   command -v less  >/dev/null 2>&1    || pkgs+=(less)
   command -v xz    >/dev/null 2>&1    || pkgs+=(xz xz-utils)
   command -v gzip  >/dev/null 2>&1    || pkgs+=(gzip)
-  # Optional preview tool: chafa (cross-platform terminal image viewer)
-  command -v chafa  >/dev/null 2>&1   || pkgs+=(chafa)
 
   if [[ ${#pkgs[@]} -gt 0 ]]; then
-    if command -v dialog >/dev/null 2>&1; then
-      if ! deps_install_with_dialog "${pkgs[@]}"; then
-        # Keep details in the log, but inform user with a concise dialog
-        dialog --title "Dependencies" --msgbox \
-          "Some dependencies failed to install.\n\nYou can review the log at:\n$log" 10 60
-      fi
-    else
-      # Fallback: install quietly without TUI
-      install_dependencies "${pkgs[@]}" >>"$log" 2>&1 || true
+    prepare_dependency_installation "${pkgs[@]}" || return 1
+    if ! deps_install_with_dialog "${pkgs[@]}"; then
+      dialog --title "Dependencies" --msgbox \
+        "Dependencies failed to install.\n\nYou can review the log at:\n$log" 10 60
+      return 1
     fi
   fi
 }
