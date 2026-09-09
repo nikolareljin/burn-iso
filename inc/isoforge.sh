@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SCRIPT: isoforge.sh
-# DESCRIPTION: Isoforge downloads Linux images, writes them to USB (single image or Ventoy multi-ISO), and builds custom installable ISOs from a recipe.
+# DESCRIPTION: Isoforge downloads Linux images, prepares Ventoy USB drives, and builds custom installable ISOs from a base ISO and recipe.
 # USAGE: isoforge [OPTIONS] [COMMAND [COMMAND_OPTIONS]]
 # EXAMPLE: isoforge --config ./config.json
 # EXAMPLE: sudo isoforge build --recipe recipes/nikos.yml
@@ -16,7 +16,7 @@
 set -euo pipefail
 
 # CLI Isoforge-like interface using dialog
-# Steps: Select Image -> Select Drive -> Flash!
+# Steps: Select Images -> Select Drive -> Prepare Ventoy!
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ISOFORGE_ROOT="${ISOFORGE_ROOT:-}"
@@ -99,7 +99,9 @@ parse_cli_args() {
           isoforge_show_help burn
           exit 0
         fi
-        exec "$REPO_ROOT/inc/burn.sh" "$@"
+        printf 'The interactive Ventoy workflow is used for burning.
+' >&2
+        exec "$REPO_ROOT/inc/isoforge.sh"
         ;;
       setup)
         shift
@@ -324,11 +326,11 @@ ensure_dialog() {
 title() { echo "Isoforge (CLI) — iso-forge"; }
 
 show_summary() {
-  local img="${SELECTED_IMAGE:-<not selected>}"
+  local img="<not selected>"
   local dev="${SELECTED_DEVICE:+/dev/$SELECTED_DEVICE}"
   [[ -z "$dev" ]] && dev="<not selected>"
   local multi_count=${#SELECTED_IMAGES[@]}
-  [[ $multi_count -gt 1 ]] && img="${multi_count} images (Ventoy)"
+  [[ $multi_count -gt 0 ]] && img="${multi_count} image(s) (Ventoy)"
   local bg="${SELECTED_BACKGROUND:-<none>}"
   printf "Images: %s\nDrive: %s\nBackground: %s\n" "$img" "$dev" "$bg"
   if has_last_download_error; then
@@ -340,17 +342,13 @@ select_image_source() {
   dialog_init
   local choice
   choice=$(dialog --stdout --title "$(title)" --menu "Select image source" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 0 \
-    download "Choose from curated distros (single download)" \
-    download_multi "Choose multiple from curated distros (download)" \
-    file     "Choose local .iso file (single)" \
-    multi    "Choose multiple local .iso files" \
+    download "Choose from curated distros" \
+    local    "Choose local ISO files" \
     back     "Back") || return 1
 
   case "$choice" in
-    download)        select_image_from_config        ;;
-    download_multi)  select_images_from_config_multi ;;
-    file)            select_image_local              ;;
-    multi)           select_images_local_multi       ;;
+    download) select_images_from_config_multi ;;
+    local)    select_images_local_multi       ;;
     back)            return 0                        ;;
   esac
 }
@@ -620,92 +618,18 @@ ensure_flash_drive_selected() {
 flash_image() {
   dialog_init
   ensure_flash_drive_selected || return 1
-  if [[ ${#SELECTED_IMAGES[@]} -gt 1 ]]; then
-    flash_with_ventoy || return 1
-    return 0
+  if [[ ${#SELECTED_IMAGES[@]} -gt 0 ]]; then
+    flash_with_ventoy
+    return $?
   fi
-  if [[ -z "${SELECTED_IMAGE:-}" ]]; then
-    dialog --title "Missing selection" --msgbox "Please select an image first." 8 60
-    return 1
-  fi
-  if ! [[ -f "$SELECTED_IMAGE" ]]; then
-    dialog --title "Image missing" --msgbox "Selected image not found: $SELECTED_IMAGE" 8 70
-    return 1
-  fi
-  flash_confirm || return 1
-  local dev="/dev/$SELECTED_DEVICE"
-  local total
-  if stat -c %s "$SELECTED_IMAGE" >/dev/null 2>&1; then
-    total=$(stat -c %s "$SELECTED_IMAGE")
-  else
-    total=$(stat -f%z "$SELECTED_IMAGE" 2>/dev/null || echo 0)
-  fi
+  dialog --title "Missing selection" --msgbox "Please select one or more ISO files first." 8 60
+  return 1
 
-  # Handle compressed images by streaming decompression to dd
-  local lower_img="${SELECTED_IMAGE,,}" use_stream=false stream_cmd=()
-  if [[ "$lower_img" == *.img.xz || "$lower_img" == *.xz ]]; then
-    if command -v xz >/dev/null 2>&1; then
-      stream_cmd=(xz -dc "$SELECTED_IMAGE")
-      use_stream=true
-      total=0
-    else
-      dialog --title "Missing tool" --msgbox "xz not found to decompress image. Install xz/xz-utils and try again." 9 60
-      return 1
-    fi
-  elif [[ "$lower_img" == *.img.gz || "$lower_img" == *.gz ]]; then
-    if command -v gzip >/dev/null 2>&1; then
-      stream_cmd=(gzip -dc "$SELECTED_IMAGE")
-      use_stream=true
-      total=0
-    else
-      dialog --title "Missing tool" --msgbox "gzip not found to decompress image." 7 50
-      return 1
-    fi
-  fi
-
-  local dd_args
-  if $use_stream; then
-    dd_args=(dd of="$dev" bs=4M conv=fsync status=progress)
-  else
-    dd_args=(dd if="$SELECTED_IMAGE" of="$dev" bs=4M conv=fsync status=progress)
-  fi
-  local prefix=(); command -v sudo >/dev/null 2>&1 && prefix=(sudo)
-  (
-    set +e
-    if $use_stream; then
-      "${stream_cmd[@]}" | "${prefix[@]}" "${dd_args[@]}" 2>&1 |
-      awk -v total="$total" '
-        /^[0-9]+ bytes/ {
-          cur=$1; pct=(total>0)?int(cur*100/total):0; if (pct>100)pct=100;
-          print "XXX"; print pct; printf("Writing (decompressing)... %s bytes\n", cur); print "XXX"; fflush();
-        }
-      END { print "XXX"; print 100; print "Finalizing..."; print "XXX"; fflush(); }'
-    else
-      "${prefix[@]}" "${dd_args[@]}" 2>&1 |
-      awk -v total="$total" '
-        /^[0-9]+ bytes/ {
-          cur=$1; pct=(total>0)?int(cur*100/total):0; if (pct>100)pct=100;
-          print "XXX"; print pct; printf("Writing... %s bytes\n", cur); print "XXX"; fflush();
-        }
-      END { print "XXX"; print 100; print "Finalizing..."; print "XXX"; fflush(); }'
-    fi
-    status=$?
-    echo "$status" >"$REPO_ROOT/.flash_status.tmp"
-  ) | dialog --title "Flashing to $dev" --gauge "Starting..." 12 "$DIALOG_WIDTH" 0
-  local status; status=$(cat "$REPO_ROOT/.flash_status.tmp" 2>/dev/null || echo 1)
-  rm -f "$REPO_ROOT/.flash_status.tmp"
-  sync || true
-  if [[ "$status" -eq 0 ]]; then
-    dialog --title "Success" --msgbox "Flash completed successfully." 7 40
-  else
-    dialog --title "Error" --msgbox "Flashing failed. Check permissions and device." 8 60
-    return 1
-  fi
 }
 
 # --- Ventoy support ---
 flash_with_ventoy() {
-  if [[ ${#SELECTED_IMAGES[@]} -lt 2 ]]; then return 1; fi
+  if [[ ${#SELECTED_IMAGES[@]} -eq 0 ]]; then return 1; fi
   ensure_ventoy_available || return 1
   local dev="/dev/$SELECTED_DEVICE"
   local prefix=(); command -v sudo >/dev/null 2>&1 && prefix=(sudo)
@@ -968,6 +892,69 @@ ensure_image_view_available() {
   rm -rf "$tmpdir"
 }
 
+select_iso_creator_base() {
+  dialog_init
+  load_config
+  create_directory "$DOWNLOAD_DIR" >/dev/null || true
+
+  local -a files=() items=()
+  mapfile -t files < <(find "$DOWNLOAD_DIR" -maxdepth 1 -type f -iname '*.iso' -print | sort)
+  if [[ ${#files[@]} -eq 0 ]]; then
+    dialog --title "ISO Creator" --msgbox \
+      "No local ISO files found in $DOWNLOAD_DIR. Download a base ISO first." 9 72
+    return 1
+  fi
+
+  local file
+  for file in "${files[@]}"; do
+    items+=("$file" "$(basename -- "$file")")
+  done
+  dialog --stdout --title "ISO Creator — Base ISO" --menu \
+    "Choose the local ISO to customize" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 0 "${items[@]}"
+}
+
+select_iso_creator_recipe() {
+  dialog_init
+  local -a recipes=() items=()
+  mapfile -t recipes < <(find "$REPO_ROOT/recipes" -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) -print | sort)
+  if [[ ${#recipes[@]} -eq 0 ]]; then
+    dialog --title "ISO Creator" --msgbox "No recipe files found in $REPO_ROOT/recipes." 8 70
+    return 1
+  fi
+
+  local recipe
+  for recipe in "${recipes[@]}"; do
+    items+=("$recipe" "$(basename -- "$recipe")")
+  done
+  dialog --stdout --title "ISO Creator — Recipe" --menu \
+    "Choose the customization recipe" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 0 "${items[@]}"
+}
+
+create_iso() {
+  local base_iso recipe
+  base_iso=$(select_iso_creator_base) || return 1
+  recipe=$(select_iso_creator_recipe) || return 1
+
+  dialog --title "Create ISO" --yesno \
+    "Base ISO:\n  $(basename -- "$base_iso")\n\nRecipe:\n  $(basename -- "$recipe")\n\nThe builder creates a new ISO in $DOWNLOAD_DIR and requires administrator privileges. Continue?" \
+    14 76 || return 1
+
+  clear
+  local rc
+  if (( EUID == 0 )); then
+    if "$REPO_ROOT/inc/forge.sh" --recipe "$recipe" --base-iso "$base_iso"; then rc=0; else rc=$?; fi
+  else
+    if sudo "$REPO_ROOT/inc/forge.sh" --recipe "$recipe" --base-iso "$base_iso"; then rc=0; else rc=$?; fi
+  fi
+
+  if (( rc == 0 )); then
+    dialog --title "ISO Creator" --msgbox "New ISO created in:\n$DOWNLOAD_DIR" 8 72
+  else
+    dialog --title "ISO Creator" --msgbox "ISO creation failed (exit $rc). Review the terminal output above for details." 9 72
+  fi
+  return "$rc"
+}
+
 main_menu() {
   # Attempt to install missing dependencies (dialog, jq, curl/wget, util-linux, coreutils)
   ensure_deps
@@ -978,15 +965,17 @@ main_menu() {
     local choice
     choice=$(dialog --stdout --title "$(title)" \
       --menu "${summary}\n\nChoose an action:" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 0 \
-      image  "Select Image(s)" \
+      image  "Select ISO files" \
+      create "ISO Creator (base ISO + recipe)" \
       bg     "Select Ventoy Background" \
       drive  "Select Drive" \
-      flash  "Flash! (dd for single, Ventoy for multi)" \
+      flash  "Prepare Ventoy USB" \
       quit   "Quit") || break
 
     case "$choice" in
-      image) if ! run_main_menu_action select_image_source; then :; fi ;;
-      bg)    if ! run_main_menu_action select_background_image; then :; fi ;;
+      image)  if ! run_main_menu_action select_image_source; then :; fi ;;
+      create) if ! create_iso; then :; fi ;;
+      bg)     if ! run_main_menu_action select_background_image; then :; fi ;;
       drive) if ! run_main_menu_action select_drive; then :; fi ;;
       flash) if ! run_main_menu_action flash_image; then :; fi ;;
       quit)  break               ;;

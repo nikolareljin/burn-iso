@@ -37,6 +37,10 @@ case "$parse_status" in
   *) isoforge_show_help burn; exit 2 ;;
 esac
 
+# Burning is Ventoy-only. Keep this compatibility entrypoint, but hand off to
+# the main workflow instead of writing a raw image with dd.
+exec "$REPO_ROOT/inc/isoforge.sh"
+
 if [[ ! -f "$SCRIPT_HELPERS_DIR/helpers.sh" ]]; then
   >&2 printf "Missing required helper library: %s\n" "$SCRIPT_HELPERS_DIR/helpers.sh"
   >&2 printf "Please install project submodules (e.g. run 'git submodule update --init --recursive') and retry.\n"
