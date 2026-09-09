@@ -9,6 +9,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   tmpdir="$(mktemp -d)"
   trap 'rm -rf "$tmpdir"' EXIT
   source ./inc/isoforge.sh
+  download_content_length() { printf '0\n'; }
 
   tmp_log="$tmpdir/error.log"
   record_last_download_error \

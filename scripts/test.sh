@@ -50,6 +50,7 @@ cd "$ROOT_DIR"
 ./scripts/test-setup-dependencies.sh
 ./scripts/test-flash-drive-redirect.sh
 ./scripts/test-download-error-state.sh
+./scripts/test-download-progress.sh
 ./scripts/test-forge-recipe.sh
 ./scripts/test-forge-distrodeck.sh
 ./scripts/test-forge-image.sh
