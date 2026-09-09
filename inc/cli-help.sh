@@ -108,7 +108,7 @@ Parameters:
   PACKAGE        Optional package names to install instead of default dependency set.
 
 Default Dependencies:
-  dialog curl jq wget util-linux coreutils rsync exfatprogs exfat-utils parted
+  dialog curl jq wget util-linux coreutils rsync exfatprogs parted
   xorriso squashfs-tools python3-yaml
 HELP
 }

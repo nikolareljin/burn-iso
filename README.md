@@ -171,7 +171,7 @@ Ventoy Requirements
   - via system package manager (`apt`, `dnf`, `pacman`) if available
   - otherwise it fetches the latest release from GitHub and unpacks under `./ventoy/`
 - It looks for `./ventoy/Ventoy2Disk.sh`, `./tools/ventoy/Ventoy2Disk.sh`, or `Ventoy2Disk.sh` on `PATH`.
-- Packages helpful for this flow (installed by `./setup`): `rsync`, `exfatprogs`/`exfat-utils`, `parted`.
+- Packages helpful for this flow (installed by `./setup`): `rsync`, `exfatprogs`, `parted`.
 
 Installable CLI
 
