@@ -816,9 +816,26 @@ copy_isos_to_ventoy() {
 select_background_image() {
   dialog_init
   local start_dir="${DOWNLOAD_DIR:-$HOME}"
-  local img
-  img=$(dialog --stdout --title "Select Background Image (jpg/png/tga)" --fselect "$start_dir/" "$DIALOG_HEIGHT" "$DIALOG_WIDTH") || return 1
-  [[ -z "$img" ]] && return 1
+  local bundled_dir="$REPO_ROOT/assets/ventoy"
+  local choice img
+  choice=$(dialog --stdout --title "Select Ventoy Background" --menu \
+    "Choose a bundled background or a custom image" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 0 \
+    isoforge "IsoForge — dark forge" \
+    nikos "NikOS — dark slate" \
+    custom "Choose a jpg/png/tga file") || return 1
+  case "$choice" in
+    isoforge) img="$bundled_dir/isoforge-background.png" ;;
+    nikos)    img="$bundled_dir/nikos-background.png" ;;
+    custom)
+      img=$(dialog --stdout --title "Select Background Image (jpg/png/tga)" --fselect "$start_dir/" "$DIALOG_HEIGHT" "$DIALOG_WIDTH") || return 1
+      ;;
+    *) return 1 ;;
+  esac
+  if [[ ! -f "$img" ]]; then
+    dialog --title "Background unavailable" --msgbox "Background file not found:
+$img" 8 72
+    return 1
+  fi
   local lower="${img,,}"
   if [[ "$lower" != *.jpg && "$lower" != *.jpeg && "$lower" != *.png && "$lower" != *.tga ]]; then
     dialog --title "Invalid file" --msgbox "Select a jpg/png/tga image." 7 40

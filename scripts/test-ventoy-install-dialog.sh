@@ -57,3 +57,12 @@ EOF
   [[ -f "$programbox_seen" ]]
   [[ ! -e "$gauge_seen" ]]
 )
+
+# Bundled backgrounds are PNG because Ventoy renders raster files reliably.
+[[ -f "$ROOT_DIR/assets/isoforge-logo.svg" ]]
+[[ -f "$ROOT_DIR/assets/ventoy/isoforge-background.svg" ]]
+[[ -f "$ROOT_DIR/assets/ventoy/nikos-background.svg" ]]
+[[ -f "$ROOT_DIR/assets/ventoy/isoforge-background.png" ]]
+[[ -f "$ROOT_DIR/assets/ventoy/nikos-background.png" ]]
+grep -q 'isoforge "IsoForge — dark forge"' "$ROOT_DIR/inc/isoforge.sh"
+grep -q 'nikos "NikOS — dark slate"' "$ROOT_DIR/inc/isoforge.sh"

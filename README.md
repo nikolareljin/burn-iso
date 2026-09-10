@@ -164,7 +164,7 @@ Background Image & Preview
 
 - The tool will attempt to auto-download a matching `image-view` release binary for your OS/arch from GitHub if none is found.
 - If you prefer to manage it yourself, build [image-view](https://github.com/nikolareljin/image-view) separately and place the binary at `image-view/image-view`. It is not a submodule of this repository.
-- In `./isoforge`, choose “Select Ventoy Background”, pick a `jpg/png/tga`, preview it, and it will be installed as a Ventoy theme background.
+- In `./isoforge`, choose “Select Ventoy Background” and select the bundled **IsoForge** or **NikOS** 1920×1080 background, or choose a custom `jpg/png/tga` image. The editable SVG sources live in `assets/ventoy/`; the PNG exports are used for reliable Ventoy rendering.
 
 Ventoy Requirements
 
