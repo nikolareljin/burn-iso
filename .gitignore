@@ -4,6 +4,9 @@
 .mockbin/
 test_downloads/
 ventoy/
+!assets/
+!assets/ventoy/
+!assets/ventoy/**
 dist/
 
 # Packaging artifacts

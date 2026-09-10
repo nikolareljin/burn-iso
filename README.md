@@ -71,10 +71,11 @@ Build A Custom ISO
 - The finished ISO lands in `download_dir`, so `./isoforge` lists it and flashes
   it like any other image.
 - Check a recipe without root, a download or a build: `./forge --recipe recipes/example.yml --dry-run`
-- `recipes/nikos.yml` builds NikOS itself: a Xubuntu base with the NikOS
-  playbook applied inside the image, so the ISO installs an already-provisioned
-  desktop. `.github/workflows/nikos-iso.yml` runs that build end to end and
-  `scripts/verify-nikos-iso.sh` checks the finished image.
+- `recipes/nikos.yml` preserves stock Xubuntu and adds an **Install NikOS**
+  launcher. After Xubuntu is installed and rebooted, it selects a NikOS profile
+  and starts NikOS's own options TUI. Run
+  `scripts/test-nikos-xubuntu-iso.sh` after downloading Xubuntu 24.04.4 to
+  build and inspect the finished image.
 - Full guide: `docs/BUILD.md`. Choosing what an image contains, and the
   limitation to know about until that lands: `docs/IMAGE-COMPOSITION.md`.
 
@@ -163,7 +164,7 @@ Background Image & Preview
 
 - The tool will attempt to auto-download a matching `image-view` release binary for your OS/arch from GitHub if none is found.
 - If you prefer to manage it yourself, build [image-view](https://github.com/nikolareljin/image-view) separately and place the binary at `image-view/image-view`. It is not a submodule of this repository.
-- In `./isoforge`, choose “Select Ventoy Background”, pick a `jpg/png/tga`, preview it, and it will be installed as a Ventoy theme background.
+- In `./isoforge`, choose “Select Ventoy Background” and select the bundled **IsoForge** or **NikOS** 1920×1080 background, or choose a custom `jpg/png/tga` image. The editable SVG sources live in `assets/ventoy/`; the PNG exports are used for reliable Ventoy rendering.
 
 Ventoy Requirements
 
@@ -171,7 +172,7 @@ Ventoy Requirements
   - via system package manager (`apt`, `dnf`, `pacman`) if available
   - otherwise it fetches the latest release from GitHub and unpacks under `./ventoy/`
 - It looks for `./ventoy/Ventoy2Disk.sh`, `./tools/ventoy/Ventoy2Disk.sh`, or `Ventoy2Disk.sh` on `PATH`.
-- Packages helpful for this flow (installed by `./setup`): `rsync`, `exfatprogs`/`exfat-utils`, `parted`.
+- Packages helpful for this flow (installed by `./setup`): `rsync`, `exfatprogs`, `parted`.
 
 Installable CLI
 
