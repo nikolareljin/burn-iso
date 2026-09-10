@@ -686,10 +686,10 @@ flash_with_ventoy() {
     fi
   fi
   if [[ -n "$SELECTED_BACKGROUND" && -f "$SELECTED_BACKGROUND" ]]; then
-    apply_ventoy_background "$mnt" "$SELECTED_BACKGROUND" || return 1
+    apply_ventoy_background "$mnt" "$SELECTED_BACKGROUND" "${prefix[@]}" || return 1
   fi
   if ! ensure_space_or_prune "$mnt"; then return 1; fi
-  copy_isos_to_ventoy "$mnt" || return 1
+  copy_isos_to_ventoy "$mnt" "${prefix[@]}" || return 1
   sync || true
   dialog --title "Success" --msgbox "Ventoy prepared and ISOs copied successfully." 7 60
 }
@@ -751,31 +751,27 @@ ensure_ventoy_available() {
 }
 
 apply_ventoy_background() {
-  local mnt="$1"; shift
-  local img="$1"
+  local mnt="$1" img="$2"
+  shift 2
+  local -a prefix=("$@")
   local vdir="$mnt/ventoy/theme/default"
-  mkdir -p "$vdir"
   local ext="${img##*.}"; ext="${ext,,}"
   case "$ext" in
     jpg|jpeg|png|tga) :;;
     *) dialog --title "Background" --msgbox "Unsupported image format: .$ext. Use jpg/png/tga." 8 60; return 1;;
   esac
   local bg="$vdir/background.$ext"
-  cp -f "$img" "$bg"
-  cat >"$vdir/theme.txt" <<EOF
-desktop-image: "background.$ext"
-title-text: "Ventoy"
-EOF
-  mkdir -p "$mnt/ventoy"
-  cat >"$mnt/ventoy/ventoy.json" <<EOF
-{
-  "theme": {
-    "file": "/ventoy/theme/default/theme.txt",
-    "gfxmode": "auto",
-    "display_mode": "GUI"
-  }
-}
-EOF
+
+  # The Ventoy data partition is normally mounted by sudo and therefore owned
+  # by root. Keep every write on that mounted filesystem on the same privilege
+  # path; shell redirections are replaced with tee so they are elevated too.
+  "${prefix[@]}" mkdir -p "$vdir" || return 1
+  "${prefix[@]}" cp -f "$img" "$bg" || return 1
+  printf 'desktop-image: "background.%s"\ntitle-text: "Ventoy"\n' "$ext" | \
+    "${prefix[@]}" tee "$vdir/theme.txt" >/dev/null || return 1
+  "${prefix[@]}" mkdir -p "$mnt/ventoy" || return 1
+  printf '%s\n' '{' '  "theme": {' '    "file": "/ventoy/theme/default/theme.txt",'     '    "gfxmode": "auto",' '    "display_mode": "GUI"' '  }' '}' | \
+    "${prefix[@]}" tee "$mnt/ventoy/ventoy.json" >/dev/null || return 1
 }
 
 ensure_space_or_prune() {
@@ -801,14 +797,16 @@ ensure_space_or_prune() {
 }
 
 copy_isos_to_ventoy() {
-  local mnt="$1"; shift
+  local mnt="$1"
+  shift
+  local -a prefix=("$@")
   local f
   for f in "${SELECTED_IMAGES[@]}"; do
     local base; base=$(basename "$f")
     if command -v rsync >/dev/null 2>&1; then
-      rsync -h --progress "$f" "$mnt/$base" || return 1
+      "${prefix[@]}" rsync -h --progress "$f" "$mnt/$base" || return 1
     else
-      cp -v "$f" "$mnt/$base" || return 1
+      "${prefix[@]}" cp -v "$f" "$mnt/$base" || return 1
     fi
   done
 }

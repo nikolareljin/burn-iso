@@ -39,7 +39,6 @@ EOF
   ensure_ventoy_available() { VENTOY_BIN="$installer"; }
   flash_confirm() { return 0; }
   ensure_space_or_prune() { return 0; }
-  copy_isos_to_ventoy() { return 0; }
   sync() { :; }
   lsblk() {
     if [[ "$*" == *'-ln'* ]]; then
@@ -56,6 +55,18 @@ EOF
   [[ "$(cat "$answer")" == y ]]
   [[ -f "$programbox_seen" ]]
   [[ ! -e "$gauge_seen" ]]
+
+  # Writes to the root-mounted data partition must use the supplied sudo path.
+  write_mnt="$tmpdir/write-mnt"
+  write_img="$tmpdir/background.png"
+  : >"$write_img"
+  SELECTED_IMAGES=("$tmpdir/test.iso")
+  apply_ventoy_background "$write_mnt" "$write_img" sudo
+  copy_isos_to_ventoy "$write_mnt" sudo
+  [[ -f "$write_mnt/ventoy/theme/default/background.png" ]]
+  [[ -f "$write_mnt/ventoy/theme/default/theme.txt" ]]
+  [[ -f "$write_mnt/ventoy/ventoy.json" ]]
+  [[ -f "$write_mnt/test.iso" ]]
 )
 
 # Bundled backgrounds are PNG because Ventoy renders raster files reliably.
