@@ -12,21 +12,23 @@
   <rect width="1920" height="1080" fill="url(#grid)"/>
   <rect width="1920" height="4" fill="#2196f3" opacity=".8"/>
 
-  <!-- Symmetric NikOS mark: no nested scaling or non-uniform transforms. -->
-  <g aria-label="NikOS" fill="none" stroke-linecap="round">
-    <line x1="800" y1="409" x2="937" y2="342" stroke="#2196f3" stroke-width="4.5"/>
-    <line x1="983" y1="342" x2="1129" y2="409" stroke="#90a4ae" stroke-width="3.5" opacity=".85"/>
-    <line x1="801" y1="623" x2="937" y2="657" stroke="#2196f3" stroke-width="4.5"/>
-    <line x1="991" y1="657" x2="1125" y2="623" stroke="#90a4ae" stroke-width="3.5" opacity=".85"/>
+  <!-- Compact top-centre NikOS header, matching the IsoForge theme layout. -->
+  <g transform="translate(960 165)">
+    <g fill="none" stroke-linecap="round">
+      <line x1="-116" y1="-22" x2="-42" y2="-66" stroke="#2196f3" stroke-width="4"/>
+      <line x1="42" y1="-66" x2="116" y2="-22" stroke="#90a4ae" stroke-width="3" opacity=".85"/>
+      <line x1="-116" y1="48" x2="-34" y2="70" stroke="#2196f3" stroke-width="4"/>
+      <line x1="34" y1="70" x2="116" y2="48" stroke="#90a4ae" stroke-width="3" opacity=".85"/>
+    </g>
+    <circle cx="0" cy="-78" r="16" fill="#2196f3" filter="url(#blue-glow)"/>
+    <circle cx="-132" cy="-16" r="18" fill="#2196f3"/>
+    <circle cx="132" cy="-16" r="13" fill="#90a4ae"/>
+    <rect x="-150" y="34" width="30" height="30" rx="8" fill="#2196f3"/>
+    <circle cx="0" cy="79" r="17" fill="#2196f3" filter="url(#blue-glow)"/>
+    <circle cx="132" cy="48" r="13" fill="#90a4ae"/>
+    <text x="0" y="15" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="68" font-weight="800" letter-spacing="-2" fill="#eceff4">NikOS</text>
   </g>
-  <circle cx="960" cy="330" r="26" fill="#2196f3" filter="url(#blue-glow)"/>
-  <circle cx="770" cy="424" r="33" fill="#2196f3"/>
-  <circle cx="1150" cy="424" r="24" fill="#90a4ae"/>
-  <rect x="749" y="591" width="52" height="52" rx="14" fill="#2196f3"/>
-  <circle cx="1145" cy="617" r="21" fill="#90a4ae"/>
-  <circle cx="964" cy="664" r="28" fill="#2196f3" filter="url(#blue-glow)"/>
-  <text x="960" y="570" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="118" font-weight="800" letter-spacing="-3" fill="#eceff4">NikOS</text>
-  <text x="960" y="710" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" letter-spacing="1" fill="#81a1c1">Neural Innovation for Knowledge OS</text>
-  <text x="960" y="748" text-anchor="middle" font-family="monospace" font-size="15" letter-spacing="5" fill="#4c566a">LIGHT SYSTEM. HEAVY THINKING.</text>
+  <text x="960" y="300" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" letter-spacing="5" fill="#81a1c1">NEURAL INNOVATION FOR KNOWLEDGE OS</text>
+  <text x="960" y="329" text-anchor="middle" font-family="monospace" font-size="12" letter-spacing="4" fill="#4c566a">LIGHT SYSTEM. HEAVY THINKING.</text>
   <text x="960" y="1010" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" letter-spacing="3" fill="#4c566a">VENTOY BOOT SYSTEM</text>
 </svg>
