@@ -634,15 +634,28 @@ flash_with_ventoy() {
   local dev="/dev/$SELECTED_DEVICE"
   local prefix=(); command -v sudo >/dev/null 2>&1 && prefix=(sudo)
   flash_confirm || return 1
-  (
-    set -e
-    "${prefix[@]}" bash "$VENTOY_BIN" -I -g "$dev"
-    echo $? >"$REPO_ROOT/.ventoy_status.tmp"
-  ) | dialog --title "Installing Ventoy" --gauge "Preparing device ..." 10 "$DIALOG_WIDTH" 0
-  local vstatus; vstatus=$(cat "$REPO_ROOT/.ventoy_status.tmp" 2>/dev/null || echo 1)
-  rm -f "$REPO_ROOT/.ventoy_status.tmp"
+
+  # Ventoy writes regular text and asks for a final y/n confirmation. A dialog
+  # gauge only accepts its own XXX/percentage protocol, so that output both
+  # corrupts the display and leaves the confirmation unread. Authenticate
+  # before opening the programbox, then send the answer that the user already
+  # gave in flash_confirm.
+  if (( EUID != 0 )); then
+    sudo -v || {
+      dialog --title "Ventoy" --msgbox "Administrator authentication failed. Ventoy was not installed." 7 64
+      return 1
+    }
+  fi
+  local errexit_was_on=0
+  [[ $- == *e* ]] && errexit_was_on=1
+  set +e
+  printf 'y\n' | "${prefix[@]}" bash "$VENTOY_BIN" -I -g "$dev" 2>&1 | \
+    dialog --title "Installing Ventoy" --programbox 20 "$DIALOG_WIDTH"
+  local -a ventoy_statuses=("${PIPESTATUS[@]}")
+  (( errexit_was_on )) && set -e
+  local vstatus="${ventoy_statuses[1]:-1}"
   if [[ "$vstatus" -ne 0 ]]; then
-    dialog --title "Ventoy" --msgbox "Ventoy installation failed." 7 40
+    dialog --title "Ventoy" --msgbox "Ventoy installation failed (exit $vstatus). Review the installer output above." 8 72
     return 1
   fi
   local part mnt
@@ -930,10 +943,25 @@ select_iso_creator_recipe() {
     "Choose the customization recipe" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 0 "${items[@]}"
 }
 
+iso_creator_output_path() {
+  local recipe="$1" output_name
+  output_name=$(python3 -c '
+import sys, yaml
+with open(sys.argv[1], encoding="utf-8") as stream:
+    recipe = yaml.safe_load(stream) or {}
+name = (recipe.get("output") or {}).get("name")
+if not isinstance(name, str) or not name:
+    raise SystemExit(1)
+print(name)
+' "$recipe" 2>/dev/null) || return 1
+  printf '%s/%s.iso\n' "$DOWNLOAD_DIR" "$output_name"
+}
+
 create_iso() {
-  local base_iso recipe
+  local base_iso recipe created_iso
   base_iso=$(select_iso_creator_base) || return 1
   recipe=$(select_iso_creator_recipe) || return 1
+  created_iso=$(iso_creator_output_path "$recipe") || created_iso="$DOWNLOAD_DIR"
 
   dialog --title "Create ISO" --yesno \
     "Base ISO:\n  $(basename -- "$base_iso")\n\nRecipe:\n  $(basename -- "$recipe")\n\nThe builder creates a new ISO in $DOWNLOAD_DIR and requires administrator privileges. Continue?" \
@@ -948,7 +976,7 @@ create_iso() {
   fi
 
   if (( rc == 0 )); then
-    dialog --title "ISO Creator" --msgbox "New ISO created in:\n$DOWNLOAD_DIR" 8 72
+    dialog --title "ISO Creator" --msgbox "New ISO created:\n$created_iso" 8 72
   else
     dialog --title "ISO Creator" --msgbox "ISO creation failed (exit $rc). Review the terminal output above for details." 9 72
   fi
@@ -959,6 +987,9 @@ main_menu() {
   # Attempt to install missing dependencies (dialog, jq, curl/wget, util-linux, coreutils)
   ensure_deps
   ensure_dialog
+  # Load this in the parent shell. ISO selection uses command substitution, so
+  # loading it inside a selector would discard DOWNLOAD_DIR with the subshell.
+  load_config
   while true; do
     dialog_init
     local summary; summary=$(show_summary)
