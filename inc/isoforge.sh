@@ -599,11 +599,6 @@ select_drive() {
     ro=$(sed -n 's/.*RO="\([^"]*\)".*/\1/p' <<<"$line")
 
     [[ "$type" != "disk" ]] && continue
-    # USB/card-reader placeholders can appear as disks with 0 B. Ventoy cannot
-    # access them, so do not offer them as destructive targets.
-    local size_bytes
-    size_bytes=$(device_capacity_bytes "$dev" || true)
-    [[ -n "$size_bytes" && "$size_bytes" != 0 ]] || continue
     if [[ "$DEVICE_FILTER" == "usb" ]]; then
       [[ "$tran" != "usb" && "$rm" != "1" ]] && continue
     fi
@@ -662,6 +657,15 @@ flash_with_ventoy() {
   local dev="/dev/$SELECTED_DEVICE"
   local prefix=(); command -v sudo >/dev/null 2>&1 && prefix=(sudo)
   flash_confirm || return 1
+
+  # Authenticate immediately after Isoforge's destructive-action confirmation,
+  # before any validation or Ventoy command touches the selected device.
+  if (( EUID != 0 )); then
+    sudo -v || {
+      dialog --title "Ventoy" --msgbox "Administrator authentication failed. Ventoy was not installed." 7 64
+      return 1
+    }
+  fi
   validate_ventoy_device "$dev" "${prefix[@]}" || return 1
 
   # Ventoy writes regular text and asks for a final y/n confirmation. A dialog
@@ -669,12 +673,6 @@ flash_with_ventoy() {
   # corrupts the display and leaves the confirmation unread. Authenticate
   # before opening the programbox, then send the answer that the user already
   # gave in flash_confirm.
-  if (( EUID != 0 )); then
-    sudo -v || {
-      dialog --title "Ventoy" --msgbox "Administrator authentication failed. Ventoy was not installed." 7 64
-      return 1
-    }
-  fi
   local errexit_was_on=0
   [[ $- == *e* ]] && errexit_was_on=1
   set +e

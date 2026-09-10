@@ -82,4 +82,4 @@ grep -q 'isoforge "IsoForge — dark forge"' "$ROOT_DIR/inc/isoforge.sh"
 grep -q 'nikos "NikOS — dark slate"' "$ROOT_DIR/inc/isoforge.sh"
 
 grep -q 'reports no usable capacity' "$ROOT_DIR/inc/isoforge.sh"
-grep -q 'device_capacity_bytes "$dev"' "$ROOT_DIR/inc/isoforge.sh"
+grep -q 'before any validation or Ventoy command' "$ROOT_DIR/inc/isoforge.sh"
