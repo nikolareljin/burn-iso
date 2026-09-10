@@ -560,6 +560,29 @@ select_image_from_config() {
   popd >/dev/null
 }
 
+device_capacity_bytes() {
+  local dev="$1" bytes
+  bytes=$(lsblk -dn -b -o SIZE "/dev/$dev" 2>/dev/null | tr -d '[:space:]')
+  [[ "$bytes" =~ ^[0-9]+$ ]] || return 1
+  printf '%s\n' "$bytes"
+}
+
+validate_ventoy_device() {
+  local dev="$1"
+  shift
+  local -a prefix=("$@")
+  local bytes
+  bytes=$(device_capacity_bytes "${dev#/dev/}" || true)
+  if [[ -z "$bytes" || "$bytes" == 0 ]]; then
+    dialog --title "Drive unavailable" --msgbox       "$dev reports no usable capacity. Reconnect the USB drive, wait for it to appear with a non-zero size, then select it again." 9 72
+    return 1
+  fi
+  if ! "${prefix[@]}" dd if="$dev" of=/dev/null bs=1 count=1 status=none 2>/dev/null; then
+    dialog --title "Drive unavailable" --msgbox       "Isoforge cannot read $dev even with administrator privileges. Reconnect the drive or select a different USB device." 9 72
+    return 1
+  fi
+}
+
 select_drive() {
   dialog_init
   local rows raw dev type size model tran rm ro
@@ -576,6 +599,11 @@ select_drive() {
     ro=$(sed -n 's/.*RO="\([^"]*\)".*/\1/p' <<<"$line")
 
     [[ "$type" != "disk" ]] && continue
+    # USB/card-reader placeholders can appear as disks with 0 B. Ventoy cannot
+    # access them, so do not offer them as destructive targets.
+    local size_bytes
+    size_bytes=$(device_capacity_bytes "$dev" || true)
+    [[ -n "$size_bytes" && "$size_bytes" != 0 ]] || continue
     if [[ "$DEVICE_FILTER" == "usb" ]]; then
       [[ "$tran" != "usb" && "$rm" != "1" ]] && continue
     fi
@@ -634,6 +662,7 @@ flash_with_ventoy() {
   local dev="/dev/$SELECTED_DEVICE"
   local prefix=(); command -v sudo >/dev/null 2>&1 && prefix=(sudo)
   flash_confirm || return 1
+  validate_ventoy_device "$dev" "${prefix[@]}" || return 1
 
   # Ventoy writes regular text and asks for a final y/n confirmation. A dialog
   # gauge only accepts its own XXX/percentage protocol, so that output both

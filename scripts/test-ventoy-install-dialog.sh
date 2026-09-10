@@ -41,10 +41,13 @@ EOF
   ensure_space_or_prune() { return 0; }
   sync() { :; }
   lsblk() {
-    if [[ "$*" == *'-ln'* ]]; then
+    if [[ "$*" == *'-dn'* && "$*" == *SIZE* ]]; then
+      printf '1000000\n'
+    elif [[ "$*" == *'-ln'* ]]; then
       printf 'sdb1 part 1000000 VENTOY exfat\n'
     fi
   }
+  dd() { return 0; }
   # shellcheck disable=SC2317 # invoked indirectly by flash_with_ventoy
   mount() { return 0; }
 
@@ -77,3 +80,6 @@ EOF
 [[ -f "$ROOT_DIR/assets/ventoy/nikos-background.png" ]]
 grep -q 'isoforge "IsoForge — dark forge"' "$ROOT_DIR/inc/isoforge.sh"
 grep -q 'nikos "NikOS — dark slate"' "$ROOT_DIR/inc/isoforge.sh"
+
+grep -q 'reports no usable capacity' "$ROOT_DIR/inc/isoforge.sh"
+grep -q 'device_capacity_bytes "$dev"' "$ROOT_DIR/inc/isoforge.sh"
